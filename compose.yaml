@@ -1,0 +1,70 @@
+name: northstar-simulated-bank
+services:
+  app:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgresql://northstar:${POSTGRES_PASSWORD:-northstar_dev}@postgres:5432/northstar
+      REDIS_URL: redis://redis:6379/0
+      OBJECT_STORAGE_ENDPOINT: http://minio:9000
+      SIMULATION_MODE: "true"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    networks: [front,back]
+  postgres:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: northstar
+      POSTGRES_USER: northstar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-northstar_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U northstar -d northstar"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [back]
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server","--appendonly","yes"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [back]
+  minio:
+    image: minio/minio:latest
+    command: ["server","/data","--console-address",":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-northstar}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-northstar_training_only}
+    volumes: [object_data:/data]
+    restart: unless-stopped
+    networks: [back]
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80","443:443"]
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [app]
+    restart: unless-stopped
+    networks: [front]
+volumes:
+  postgres_data:
+  redis_data:
+  object_data:
+  caddy_data:
+networks:
+  front:
+  back:
+    internal: true
