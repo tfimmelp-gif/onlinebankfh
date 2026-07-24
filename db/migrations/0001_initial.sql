@@ -178,25 +178,93 @@ CREATE TABLE ledger_entries (
 );
 
 CREATE OR REPLACE FUNCTION protect_posted_ledger() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE target_transaction_id uuid;
 BEGIN
-  IF EXISTS (SELECT 1 FROM ledger_transactions WHERE id=COALESCE(OLD.transaction_id,NEW.transaction_id) AND status IN ('POSTED','REVERSED')) THEN
+  target_transaction_id := CASE WHEN TG_OP='DELETE' THEN OLD.transaction_id ELSE NEW.transaction_id END;
+  IF EXISTS (SELECT 1 FROM ledger_transactions WHERE id=target_transaction_id AND status IN ('POSTED','REVERSED')) THEN
     RAISE EXCEPTION 'posted ledger entries are immutable';
   END IF;
-  RETURN COALESCE(NEW,OLD);
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END $$;
-CREATE TRIGGER ledger_entries_immutable BEFORE UPDATE OR DELETE ON ledger_entries FOR EACH ROW EXECUTE FUNCTION protect_posted_ledger();
+CREATE TRIGGER ledger_entries_immutable BEFORE INSERT OR UPDATE OR DELETE ON ledger_entries FOR EACH ROW EXECUTE FUNCTION protect_posted_ledger();
 
 CREATE OR REPLACE FUNCTION validate_balanced_transaction() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE debit_total bigint; credit_total bigint;
 BEGIN
-  IF NEW.status IN ('POSTED','REVERSED') AND OLD.status='DRAFT' THEN
+  IF NEW.status IN ('POSTED','REVERSED') AND (TG_OP='INSERT' OR OLD.status='DRAFT') THEN
     SELECT COALESCE(sum(amount_minor) FILTER(WHERE side='DEBIT'),0), COALESCE(sum(amount_minor) FILTER(WHERE side='CREDIT'),0)
       INTO debit_total,credit_total FROM ledger_entries WHERE transaction_id=NEW.id;
     IF debit_total=0 OR debit_total<>credit_total THEN RAISE EXCEPTION 'unbalanced ledger transaction %',NEW.id; END IF;
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER ledger_transaction_balance BEFORE UPDATE OF status ON ledger_transactions FOR EACH ROW EXECUTE FUNCTION validate_balanced_transaction();
+CREATE TRIGGER ledger_transaction_balance BEFORE INSERT OR UPDATE OF status ON ledger_transactions FOR EACH ROW EXECUTE FUNCTION validate_balanced_transaction();
+
+CREATE OR REPLACE FUNCTION post_ledger_transaction(p_transaction_id uuid)
+RETURNS ledger_transactions
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=public
+AS $$
+DECLARE
+  posted ledger_transactions;
+  debit_total bigint;
+  credit_total bigint;
+  entry_count integer;
+BEGIN
+  SELECT * INTO posted
+  FROM ledger_transactions
+  WHERE id=p_transaction_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'ledger transaction not found'; END IF;
+  IF posted.status<>'DRAFT' THEN RAISE EXCEPTION 'ledger transaction is not draft'; END IF;
+
+  SELECT count(*),
+         COALESCE(sum(amount_minor) FILTER(WHERE side='DEBIT'),0),
+         COALESCE(sum(amount_minor) FILTER(WHERE side='CREDIT'),0)
+  INTO entry_count,debit_total,credit_total
+  FROM ledger_entries WHERE transaction_id=p_transaction_id;
+
+  IF entry_count<2 OR debit_total=0 OR debit_total<>credit_total THEN
+    RAISE EXCEPTION 'unbalanced ledger transaction %',p_transaction_id;
+  END IF;
+
+  PERFORM 1
+  FROM accounts
+  WHERE id IN (SELECT account_id FROM ledger_entries WHERE transaction_id=p_transaction_id)
+  ORDER BY id
+  FOR UPDATE;
+
+  IF EXISTS (
+    SELECT 1 FROM accounts
+    WHERE id IN (SELECT account_id FROM ledger_entries WHERE transaction_id=p_transaction_id)
+      AND status IN ('FROZEN','CLOSED')
+  ) AND posted.kind NOT IN ('REVERSAL','CORRECTION') THEN
+    RAISE EXCEPTION 'account unavailable for posting';
+  END IF;
+
+  WITH deltas AS (
+    SELECT le.account_id,
+      sum(CASE WHEN le.side=a.normal_balance THEN le.amount_minor ELSE -le.amount_minor END) AS delta
+    FROM ledger_entries le JOIN accounts a ON a.id=le.account_id
+    WHERE le.transaction_id=p_transaction_id
+    GROUP BY le.account_id
+  )
+  UPDATE accounts a
+  SET posted_balance_minor=a.posted_balance_minor+d.delta,
+      available_balance_minor=a.available_balance_minor+d.delta,
+      version=a.version+1,
+      updated_at=now()
+  FROM deltas d WHERE a.id=d.account_id;
+
+  UPDATE ledger_transactions
+  SET status='POSTED',posted_at=now()
+  WHERE id=p_transaction_id
+  RETURNING * INTO posted;
+
+  RETURN posted;
+END $$;
 
 CREATE TABLE stop_code_definitions (
   code varchar(50) PRIMARY KEY,
