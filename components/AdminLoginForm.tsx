@@ -6,9 +6,9 @@ import { useLanguage } from "./LanguageProvider";
 
 export function AdminLoginForm() {
   const {t}=useLanguage();
-  const [email, setEmail] = useState("operations@northstar.test");
-  const [password, setPassword] = useState("Northstar!2026");
-  const [otp, setOtp] = useState("246810");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -40,15 +40,15 @@ export function AdminLoginForm() {
     <form onSubmit={submit}>
       <div className="field">
         <label>{t("STAFF EMAIL")}</label>
-        <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" required />
+        <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="username" placeholder="name@your-bank.com" required />
       </div>
       <div className="field">
         <label>{t("PASSWORD")}</label>
-        <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required />
+        <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" placeholder="Enter your password" required />
       </div>
       <div className="field">
         <label>{t("6-DIGIT MFA CODE")}</label>
-        <div className="input-with-icon"><KeyRound size={15} /><input value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" required /></div>
+        <div className="input-with-icon"><KeyRound size={15} /><input value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" pattern="[0-9]{6}" required /></div>
       </div>
       {error && <div className="auth-error" role="alert">{error}</div>}
       <button className="button button-blue" disabled={loading}>
