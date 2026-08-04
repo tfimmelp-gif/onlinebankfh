@@ -12,9 +12,9 @@ RUN npm run build
 
 FROM node:24-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+ENV NODE_ENV=production PORT=4007 HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 northstar
 COPY --from=builder --chown=northstar:nodejs /app ./
 USER northstar
-EXPOSE 3000
+EXPOSE 4007
 CMD ["npm","run","start"]

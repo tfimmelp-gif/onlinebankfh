@@ -1,0 +1,10 @@
+import {objectStorage} from "../../../../server/runtime/object-storage";
+import {NextResponse} from "next/server";
+import {ADMIN_COOKIE,verifyAdminSessionToken} from "../../../../server/auth/admin-session";
+import {getSimulationKycDocument,reviewSimulationKycDocument} from "../../../../server/d1/sim-bank";
+import {validateMutationRequest} from "../../../../server/security/request";
+
+function token(request:Request){return (request.headers.get("cookie")??"").split(";").map(value=>value.trim()).find(value=>value.startsWith(`${ADMIN_COOKIE}=`))?.slice(ADMIN_COOKIE.length+1);}
+async function authorized(request:Request){return verifyAdminSessionToken(token(request));}
+export async function GET(request:Request){if(!await authorized(request))return NextResponse.json({error:"STAFF_AUTH_REQUIRED"},{status:401});try{const id=new URL(request.url).searchParams.get("documentId")??"";const document=await getSimulationKycDocument(id);const object=await (await objectStorage()).get(document.objectKey);if(!object)return NextResponse.json({error:"KYC_FILE_NOT_FOUND"},{status:404});return new Response(object.body,{headers:{"content-type":document.mediaType,"content-disposition":`inline; filename="${document.originalFilename.replaceAll('"','')}"`,"cache-control":"private, no-store"}});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"KYC_FILE_READ_FAILED"},{status:404});}}
+export async function POST(request:Request){const guard=validateMutationRequest(request);if(guard)return NextResponse.json({error:guard.error},{status:guard.status});if(!await authorized(request))return NextResponse.json({error:"STAFF_AUTH_REQUIRED"},{status:401});const body=await request.json().catch(()=>({})) as {documentId?:string;decision?:"REVIEWED"|"REJECTED"};try{return NextResponse.json(await reviewSimulationKycDocument({documentId:body.documentId??"",decision:body.decision??"REVIEWED",reviewedBy:"Sarah Okafor"}));}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"KYC_REVIEW_FAILED"},{status:422});}}

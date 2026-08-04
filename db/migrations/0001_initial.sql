@@ -341,6 +341,31 @@ CREATE TABLE transfers (
   CHECK(source_account_id<>destination_account_id)
 );
 
+CREATE TABLE transfer_error_definitions (
+  code varchar(80) PRIMARY KEY,
+  category varchar(60) NOT NULL,
+  customer_message varchar(280) NOT NULL,
+  internal_message text NOT NULL,
+  domain_status varchar(80) NOT NULL,
+  retry_policy varchar(40) NOT NULL CHECK (retry_policy IN ('NONE','IMMEDIATE','AFTER_24_HOURS','ADMIN_RELEASE')),
+  applies_to_rail transfer_rail,
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  updated_by uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE transfer_error_change_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  error_code varchar(80) NOT NULL REFERENCES transfer_error_definitions(code) ON DELETE RESTRICT,
+  changed_by uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  change_reason text NOT NULL,
+  before_state jsonb,
+  after_state jsonb NOT NULL,
+  changed_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE loans (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id),

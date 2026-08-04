@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { LanguageProvider } from "../components/LanguageProvider";
 
 const geist = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
@@ -11,24 +12,24 @@ const serif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://northstar-simulated-bank.openai.site"),
+  metadataBase: new URL("https://northstar-bank.openai.site"),
   title: {
-    default: "Northstar — Simulated Banking, Fully Under Control",
+    default: "Northstar — Banking for Every Chapter",
     template: "%s · Northstar",
   },
   description:
-    "A secure, self-hosted simulated banking environment for training teams and validating operations without live payment rails.",
+    "Personal and business banking, savings, lending, and digital money management in one secure experience.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
   openGraph: {
-    title: "Northstar — Simulated Banking, Fully Under Control",
-    description: "Training environment. No real funds or payment rails.",
-    images: [{ url: "/og.png", width: 1536, height: 1024 }],
+    title: "Northstar — Banking for Every Chapter",
+    description: "A complete, secure digital banking experience for personal and business customers.",
+    images: [{ url: "/og-bank-landing.png", width: 1672, height: 939 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Northstar — Simulated Banking, Fully Under Control",
-    description: "Training environment. No real funds or payment rails.",
-    images: ["/og.png"],
+    title: "Northstar — Banking for Every Chapter",
+    description: "A complete, secure digital banking experience for personal and business customers.",
+    images: ["/og-bank-landing.png"],
   },
 };
 
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${geist.variable} ${mono.variable} ${serif.variable}`}>
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

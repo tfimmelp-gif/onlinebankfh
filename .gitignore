@@ -41,3 +41,8 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# local Windows launcher state
+/.northstar-server.pid
+/.northstar-dev.log
+/.northstar-dev-error.log
