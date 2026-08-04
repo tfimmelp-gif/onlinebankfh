@@ -453,6 +453,7 @@ test("security hardening protects admin reads, request boundaries, and transfer 
   assert.match(service, /sim_accounts_customer_nonnegative_balance/i);
   assert.match(service, /sim_idempotency_records/i);
   assert.match(service, /sim_security_rate_limits/i);
+  assert.match(service, /sim_security_rate_limits\.request_count\+1/i);
   assert.match(caddy, /max_size 12MB/i);
   assert.doesNotMatch(brandUpload, /image\/svg\+xml/i);
 });

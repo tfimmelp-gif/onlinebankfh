@@ -18,7 +18,13 @@ export async function POST(request: Request) {
   if(guard)return NextResponse.json({error:guard.error},{status:guard.status});
   const body = await request.json().catch(() => ({})) as { email?: string; password?: string; otp?: string };
   try { await consumeSimulationRateLimit({scope:"ADMIN_LOGIN",key:observedRequestIp(request),limit:8,windowSeconds:900}); }
-  catch { return NextResponse.json({error:"Too many sign-in attempts. Try again later."},{status:429}); }
+  catch (error) {
+    if(error instanceof Error&&error.message==="RATE_LIMIT_EXCEEDED"){
+      return NextResponse.json({error:"Too many sign-in attempts. Try again later."},{status:429});
+    }
+    console.error("Admin sign-in rate limiter unavailable",error);
+    return NextResponse.json({error:"SIGN_IN_SECURITY_SERVICE_UNAVAILABLE"},{status:503});
+  }
   const expectedEmail = process.env.ADMIN_EMAIL ?? (process.env.NODE_ENV==="production"?null:"operations@northstar.test");
   const expectedPassword = process.env.ADMIN_PASSWORD ?? (process.env.NODE_ENV==="production"?null:"Northstar!2026");
 

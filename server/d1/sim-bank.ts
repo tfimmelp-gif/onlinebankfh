@@ -843,9 +843,12 @@ export async function consumeSimulationRateLimit(input:{scope:string;key:string;
   const bucketKey=await sha256Hex(`${input.scope}:${input.key.toLowerCase()}:${windowNumber}`);
   const expiresAt=new Date((windowNumber+1)*input.windowSeconds*1000).toISOString();
   const row=await db.prepare(`INSERT INTO sim_security_rate_limits (bucket_key,request_count,expires_at)
-    VALUES (?,1,?) ON CONFLICT(bucket_key) DO UPDATE SET request_count=request_count+1
+    VALUES (?,1,?) ON CONFLICT(bucket_key) DO UPDATE
+    SET request_count=sim_security_rate_limits.request_count+1
     RETURNING request_count AS requestCount`).bind(bucketKey,expiresAt).first<{requestCount:number}>();
-  if(Number(row?.requestCount??input.limit+1)>input.limit)throw new Error("RATE_LIMIT_EXCEEDED");
+  const requestCount=Number(row?.requestCount);
+  if(!Number.isFinite(requestCount)||requestCount<1)throw new Error("RATE_LIMIT_STORAGE_FAILED");
+  if(requestCount>input.limit)throw new Error("RATE_LIMIT_EXCEEDED");
 }
 
 export async function recordSimulationCustomerSession(session: SimCustomerLoginSession) {
