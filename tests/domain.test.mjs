@@ -40,7 +40,7 @@ test("portal exposes customer and staff realms", async () => {
   const source = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
   const customerSession = await readFile(new URL("../app/api/customer/session/route.ts", import.meta.url), "utf8");
   const customerAuth = await readFile(new URL("../server/auth/customer-session.ts", import.meta.url), "utf8");
-  const customerPortal = await readFile(new URL("../app/app/page.tsx", import.meta.url), "utf8");
+  const customerPortal = await readFile(new URL("../app/(customer)/app/page.tsx", import.meta.url), "utf8");
   assert.match(source, /mode: "customer" \| "admin"/);
   assert.match(source, /MFA verified/);
   assert.doesNotMatch(source, /SIMULATION ENVIRONMENT/);
