@@ -9,7 +9,7 @@
     "dev": "vinext dev --port 4007",
     "build": "vinext build",
     "start": "vinext start --port 4007",
-    "test": "npm run build && node --test tests/domain.test.mjs && tsx --test tests/runtime-adapters.test.ts",
+    "test": "npm run build && node --test tests/domain.test.mjs && tsx --test tests/runtime-adapters.test.ts tests/request-security.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:check": "node --test tests/domain.test.mjs"
   },

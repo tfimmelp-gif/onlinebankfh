@@ -10,6 +10,7 @@ x-app-environment: &app-environment
   NODE_ENV: production
   PORT: "4007"
   HOSTNAME: "0.0.0.0"
+  NORTHSTAR_HOST: ${NORTHSTAR_HOST:?Set NORTHSTAR_HOST in .env}
   DATABASE_URL: postgresql://northstar:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/northstar
   DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-12}
   REDIS_URL: redis://redis:6379/0
