@@ -118,6 +118,9 @@
 .customer-admin-drawer-head h3 { font-size: 16px; }.customer-admin-drawer-head p { margin-top: 4px; color: #718096; font-size: 9px; }
 .customer-admin-drawer-head > button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #dfe4eb; background: white; color: #64748b; }
 .customer-admin-drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-top: 18px; }
+.customer-create-form { max-width: 760px; padding-top: 20px; }
+.customer-create-form .fresh-profile-callout { margin-bottom: 18px; }
+.customer-create-form .decision-buttons { margin-top: 18px; }
 .customer-portfolio-section,.customer-history-section { margin-top: 18px; padding: 18px; border: 1px solid #e1e7ef; background: #f9fbfd; }
 .customer-portfolio-cards { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
 .customer-portfolio-cards article { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 11px; padding: 14px; border: 1px solid #dfe6ef; background: #fff; }
@@ -237,6 +240,7 @@
 .auth-copy h1 em { font-family: var(--font-serif); color: #8ca7ff; font-weight: 400; }
 .auth-copy p { max-width: 470px; color: #9eacbf; line-height: 1.7; font-size: 13px; }
 .auth-form { justify-content: center; max-width: 620px; width: 100%; }
+.auth-form-brand { align-self: flex-start; margin-bottom: 34px; color: #10233f; }
 .auth-form h2 { font-size: 30px; letter-spacing: -.04em; margin: 0 0 7px; }
 .auth-form > p { color: #7b8594; font-size: 11px; margin: 0 0 28px; }
 .auth-form .field { margin-bottom: 15px; }

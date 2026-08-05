@@ -102,6 +102,9 @@ test("website management persists authenticated revisions and drives the public 
   const publicRoute = await readFile(new URL("../app/api/website/route.ts", import.meta.url), "utf8");
   const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
   const landing = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const landingCss = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const customerAuth = await readFile(new URL("../components/AuthScreen.tsx", import.meta.url), "utf8");
+  const managedBrand = await readFile(new URL("../components/ManagedBrandLink.tsx", import.meta.url), "utf8");
   assert.match(service, /sim_website_content_revisions/i);
   assert.match(service, /saveSimulationWebsiteRevision/i);
   assert.match(service, /status = 'ARCHIVED'/i);
@@ -110,8 +113,16 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(publicRoute, /getPublicSimulationWebsite/i);
   assert.match(shell, /AdminWebsiteWorkspace/i);
   assert.match(shell, /Publish website update/i);
+  assert.match(shell, /activeBrand\?\.supportEmail\?\?settings\.supportEmail/i);
+  assert.match(shell, /Active bank brand changed across the homepage, sign-in, account-opening, and portal screens/i);
   assert.match(landing, /fetch\("\/api\/website"/i);
   assert.match(landing, /websiteSettings\.maintenanceMode/i);
+  assert.match(landing, /--mobile-slide-position/i);
+  assert.match(landingCss, /bank-hero-slide\[data-slide-index="2"\]/i);
+  assert.match(customerAuth, /auth-form-brand/i);
+  assert.match(customerAuth, /usePublicBrand/i);
+  assert.match(managedBrand, /usePublicBrand/i);
+  assert.match(service, /BRAND_LOGO_URL_INVALID/i);
 });
 
 test("customer dashboard exposes profile photo and account numbers", async () => {
@@ -427,6 +438,8 @@ test("admin KYC activation, customer statuses, and password resets are persisten
   assert.match(service, /PBKDF2/i);
   assert.match(service, /password_reset_required = 1/i);
   assert.match(service, /UPDATE sim_customer_login_sessions SET revoked_at/i);
+  assert.match(service, /ROW_NUMBER\(\) OVER \(\s*PARTITION BY method_type ORDER BY updated_at DESC, id DESC/i);
+  assert.doesNotMatch(service, /FROM sim_customer_deposit_methods WHERE active = 1\s+GROUP BY method_type/i);
   assert.match(adminApi, /CUSTOMER_STATUS_SET/i);
   assert.match(adminApi, /CUSTOMER_PASSWORD_RESET/i);
   assert.match(adminApi, /KYC_DECISION/i);

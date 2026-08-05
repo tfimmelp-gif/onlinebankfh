@@ -31,6 +31,7 @@ import {
   LogOut,
   PiggyBank,
   Plus,
+  RefreshCw,
   Palette,
   Calculator,
   Search,
@@ -553,14 +554,14 @@ function AdminKycFilesWorkspace(){
 }
 
 function AdminBrandingWorkspace(){
-  const {brandProfiles,mutate}=useBankingData();const [brandId,setBrandId]=useState("");const selected=brandProfiles.find(brand=>brand.id===brandId);const [bankName,setBankName]=useState("Northstar Bank");const [shortName,setShortName]=useState("NORTHSTAR");const [supportEmail,setSupportEmail]=useState("support@northstar.test");const [logoUrl,setLogoUrl]=useState("");const [primaryColor,setPrimaryColor]=useState("#2855d9");const [notice,setNotice]=useState("");const [saving,setSaving]=useState(false);
+  const {brandProfiles,mutate}=useBankingData();const [brandId,setBrandId]=useState("");const selected=brandProfiles.find(brand=>brand.id===brandId);const [bankName,setBankName]=useState("Northstar Bank");const [shortName,setShortName]=useState("NORTHSTAR");const [supportEmail,setSupportEmail]=useState("support@northstar.test");const [logoUrl,setLogoUrl]=useState("");const [primaryColor,setPrimaryColor]=useState("#2855d9");const [notice,setNotice]=useState("");const [error,setError]=useState("");const [saving,setSaving]=useState(false);
   useEffect(()=>{if(!selected)return;const frame=window.requestAnimationFrame(()=>{setBankName(selected.bankName);setShortName(selected.shortName);setSupportEmail(selected.supportEmail);setLogoUrl(selected.logoUrl??"");setPrimaryColor(selected.primaryColor);});return()=>window.cancelAnimationFrame(frame);},[selected]);
-  function fresh(){setBrandId("");setBankName("");setShortName("");setSupportEmail("");setLogoUrl("");setPrimaryColor("#2855d9");}
-  async function save(event:React.FormEvent){event.preventDefault();setSaving(true);try{await mutate({action:"BRAND_SAVE",brandId:brandId||undefined,bankName,shortName,supportEmail,logoUrl,primaryColor});const channel=new BroadcastChannel("northstar-brand");channel.postMessage({updated:true});channel.close();setNotice("Brand profile saved.");}catch(error){setNotice(error instanceof Error?error.message.replaceAll("_"," "):"Unable to save brand");}finally{setSaving(false);}}
-  async function activate(id:string){setSaving(true);try{await mutate({action:"BRAND_ACTIVATE",brandId:id});const channel=new BroadcastChannel("northstar-brand");channel.postMessage({updated:true});channel.close();setNotice("Active bank brand changed across the portal.");}catch(error){setNotice(error instanceof Error?error.message.replaceAll("_"," "):"Unable to activate brand");}finally{setSaving(false);}}
-  async function uploadLogo(file?:File){if(!file)return;setSaving(true);try{const form=new FormData();form.set("file",file);const response=await fetch("/admin/api/brand-logo",{method:"POST",body:form});const result=await response.json() as {logoUrl?:string;error?:string};if(!response.ok||!result.logoUrl)throw new Error(result.error??"BRAND_LOGO_UPLOAD_FAILED");setLogoUrl(result.logoUrl);setNotice("Logo uploaded. Save the brand profile to keep this change.");}catch(error){setNotice(error instanceof Error?error.message.replaceAll("_"," "):"Logo upload failed");}finally{setSaving(false);}}
-  return <><div className="overview-head"><div><h2>Multi-brand management</h2><p>Create bank identities and switch the active logo, name, contact email, and primary color.</p></div><button className="primary-action" onClick={fresh}><Plus size={14}/>New brand</button></div>{notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}<div className="branding-layout"><form className="section-card form-grid" onSubmit={save}><div className="section-title"><div><h2>{brandId?"Edit brand":"Create brand"}</h2><p>Changes are stored centrally and activated separately.</p></div></div><div className="form-row"><div className="field"><label>BANK NAME</label><input value={bankName} onChange={e=>setBankName(e.target.value)} required/></div><div className="field"><label>SHORT DISPLAY NAME</label><input value={shortName} onChange={e=>setShortName(e.target.value)} required/></div></div><div className="field"><label>SUPPORT EMAIL</label><input type="email" value={supportEmail} onChange={e=>setSupportEmail(e.target.value)} required/></div><div className="field"><label>BANK LOGO</label><input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>uploadLogo(event.target.files?.[0])}/><small>Upload PNG, JPG, or WebP up to 2 MB.</small></div><div className="field"><label>LOGO URL</label><input value={logoUrl} onChange={e=>setLogoUrl(e.target.value)} placeholder="Uploaded logo path or https://…/logo.png"/></div><div className="field"><label>PRIMARY COLOR</label><input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)}/></div><button className="admin-execute" disabled={saving}>{saving?"Saving…":"Save brand profile"}</button></form><aside className="section-card brand-preview" style={{"--preview-brand":primaryColor} as React.CSSProperties}>{logoUrl?<img src={logoUrl} alt="Brand logo preview"/>:<span><Sparkles size={26}/></span>}<h2>{bankName||"Bank name"}</h2><p>{supportEmail||"support@example.com"}</p><button style={{background:primaryColor}}>Primary action</button></aside></div>
-    <section className="section-card"><div className="section-title"><div><h2>Brand profiles</h2><p>Select a profile to edit or activate across the site.</p></div></div><div className="brand-profile-grid">{brandProfiles.map(brand=><article key={brand.id}><span style={{background:brand.primaryColor}}>{brand.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={16}/>}</span><div><b>{brand.bankName}</b><small>{brand.supportEmail}</small></div><span className={`status-pill ${brand.active?"":"warn"}`}>{brand.active?"ACTIVE":"INACTIVE"}</span><button onClick={()=>setBrandId(brand.id)}>Edit</button>{!brand.active&&<button onClick={()=>activate(brand.id)}>Activate</button>}</article>)}</div></section></>;
+  function fresh(){setBrandId("");setBankName("");setShortName("");setSupportEmail("");setLogoUrl("");setPrimaryColor("#2855d9");setError("");setNotice("");}
+  async function save(event:React.FormEvent){event.preventDefault();setSaving(true);setError("");try{const result=await mutate({action:"BRAND_SAVE",brandId:brandId||undefined,bankName,shortName,supportEmail,logoUrl,primaryColor});if(result.id)setBrandId(result.id);const channel=new BroadcastChannel("northstar-brand");channel.postMessage({updated:true});channel.close();setNotice(selected?.active?"Active brand saved and refreshed across public and authenticated pages.":"Brand profile saved. Activate it when it is ready to go live.");}catch(saveError){setError(saveError instanceof Error?saveError.message.replaceAll("_"," "):"Unable to save brand");}finally{setSaving(false);}}
+  async function activate(id:string){setSaving(true);setError("");try{await mutate({action:"BRAND_ACTIVATE",brandId:id});setBrandId(id);const channel=new BroadcastChannel("northstar-brand");channel.postMessage({updated:true});channel.close();setNotice("Active bank brand changed across the homepage, sign-in, account-opening, and portal screens.");}catch(activationError){setError(activationError instanceof Error?activationError.message.replaceAll("_"," "):"Unable to activate brand");}finally{setSaving(false);}}
+  async function uploadLogo(file?:File){if(!file)return;setSaving(true);setError("");try{const form=new FormData();form.set("file",file);const response=await fetch("/admin/api/brand-logo",{method:"POST",body:form});const result=await response.json() as {logoUrl?:string;error?:string};if(!response.ok||!result.logoUrl)throw new Error(result.error??"BRAND_LOGO_UPLOAD_FAILED");setLogoUrl(result.logoUrl);setNotice("Logo uploaded. Save the brand profile to keep this change.");}catch(uploadError){setError(uploadError instanceof Error?uploadError.message.replaceAll("_"," "):"Logo upload failed");}finally{setSaving(false);}}
+  return <><div className="overview-head"><div><h2>Multi-brand management</h2><p>Create bank identities and switch the active logo, name, contact email, and primary color.</p></div><button type="button" className="primary-action" onClick={fresh}><Plus size={14}/>New brand</button></div>{notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}{error&&<div className="auth-error" role="alert">{error}</div>}<div className="branding-layout"><form className="section-card form-grid" onSubmit={save}><div className="section-title"><div><h2>{brandId?"Edit brand":"Create brand"}</h2><p>Changes are stored centrally and activated separately.</p></div></div><div className="form-row"><div className="field"><label>BANK NAME</label><input value={bankName} maxLength={120} onChange={e=>setBankName(e.target.value)} required/></div><div className="field"><label>SHORT DISPLAY NAME</label><input value={shortName} maxLength={30} onChange={e=>setShortName(e.target.value)} required/></div></div><div className="field"><label>SUPPORT EMAIL</label><input type="email" maxLength={254} value={supportEmail} onChange={e=>setSupportEmail(e.target.value)} required/></div><div className="field"><label>BANK LOGO</label><input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>uploadLogo(event.target.files?.[0])}/><small>Upload PNG, JPG, or WebP up to 2 MB.</small></div><div className="field"><label>LOGO URL</label><input value={logoUrl} onChange={e=>setLogoUrl(e.target.value)} placeholder="Uploaded logo path or https://…/logo.png"/></div><div className="field"><label>PRIMARY COLOR</label><input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)}/></div><button className="admin-execute" disabled={saving}>{saving?"Saving…":"Save brand profile"}</button></form><aside className="section-card brand-preview" style={{"--preview-brand":primaryColor} as React.CSSProperties}>{logoUrl?<img src={logoUrl} alt="Brand logo preview"/>:<span><Sparkles size={26}/></span>}<h2>{bankName||"Bank name"}</h2><p>{supportEmail||"support@example.com"}</p><button type="button" style={{background:primaryColor}}>Primary action</button></aside></div>
+    <section className="section-card"><div className="section-title"><div><h2>Brand profiles</h2><p>Select a profile to edit or activate across the site.</p></div></div><div className="brand-profile-grid">{brandProfiles.map(brand=><article key={brand.id}><span style={{background:brand.primaryColor}}>{brand.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={16}/>}</span><div><b>{brand.bankName}</b><small>{brand.supportEmail}</small></div><span className={`status-pill ${brand.active?"":"warn"}`}>{brand.active?"ACTIVE":"INACTIVE"}</span><button type="button" disabled={saving} onClick={()=>setBrandId(brand.id)}>Edit</button>{!brand.active&&<button type="button" disabled={saving} onClick={()=>activate(brand.id)}>Activate</button>}</article>)}</div></section></>;
 }
 
 function AdminProcessingFeesWorkspace(){
@@ -695,7 +696,7 @@ function generateTemporaryPassword() {
 }
 
 function AdminCustomersWorkspace() {
-  const {customers,accounts,transactions,mutate}=useBankingData();
+  const {customers,accounts,transactions,mutate,refresh,error:loadError}=useBankingData();
   const [selectedId,setSelectedId]=useState("");
   const selected=customers.find((customer)=>customer.userId===selectedId)??null;
   const [status,setStatus]=useState<"ACTIVE"|"INACTIVE"|"IN_REVIEW">("ACTIVE");
@@ -705,6 +706,10 @@ function AdminCustomersWorkspace() {
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
   const [submitting,setSubmitting]=useState(false);
+  const [creating,setCreating]=useState(false);
+  const [createFirstName,setCreateFirstName]=useState("");
+  const [createLastName,setCreateLastName]=useState("");
+  const [createEmail,setCreateEmail]=useState("");
 
   function manage(userId:string) {
     const customer=customers.find((item)=>item.userId===userId);
@@ -737,6 +742,18 @@ function AdminCustomersWorkspace() {
     finally { setSubmitting(false); }
   }
 
+  async function createProfile(event:React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);setError("");
+    try {
+      const result=await mutate({action:"CUSTOMER_CREATE",firstName:createFirstName,lastName:createLastName,email:createEmail});
+      setNotice(`${createFirstName} ${createLastName} was created as an empty profile and added to the KYC queue (${result.userId}).`);
+      setCreateFirstName("");setCreateLastName("");setCreateEmail("");setCreating(false);
+    } catch(createError) {
+      setError(createError instanceof Error?createError.message.replaceAll("_"," "):"Customer creation failed");
+    } finally { setSubmitting(false); }
+  }
+
   const activeCount=customers.filter((customer)=>customer.accountStatus==="ACTIVE").length;
   const reviewCount=customers.filter((customer)=>customer.accountStatus==="IN_REVIEW").length;
   const selectedAccounts=selected ? accounts.filter((account)=>account.userId===selected.userId) : [];
@@ -746,17 +763,29 @@ function AdminCustomersWorkspace() {
       .sort((left,right)=>new Date(right.createdAt).getTime()-new Date(left.createdAt).getTime())
     : [];
   return <>
-    <div className="overview-head"><div><h2>Customer directory</h2><p>Manage account access, KYC state, and password recovery from one persistent customer record.</p></div></div>
+    <div className="overview-head"><div><h2>Customer directory</h2><p>Manage account access, KYC state, and password recovery from one persistent customer record.</p></div><button type="button" className="primary-action" onClick={()=>{setCreating(true);setSelectedId("");setError("");}}><Plus size={15}/>Create profile</button></div>
     {notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}
+    {loadError&&<div className="auth-error" role="alert">Customer records could not be loaded: {loadError.replaceAll("_"," ")} <button type="button" onClick={()=>void refresh()}>Retry</button></div>}
     <div className="customer-admin-metrics"><div><strong>{customers.length}</strong><span>Total customers</span></div><div><strong>{activeCount}</strong><span>Active</span></div><div><strong>{reviewCount}</strong><span>In review</span></div></div>
     <section className="section-card">
-      <div className="section-title"><div><h2>Customer accounts</h2><p>Approved customers display as Active immediately after KYC approval.</p></div><span className="status-pill">Server persisted</span></div>
+      <div className="section-title"><div><h2>Customer accounts</h2><p>Signup applications and staff-created profiles appear here automatically.</p></div><div className="table-tools"><button type="button" onClick={()=>void refresh()}><RefreshCw size={13}/>Refresh</button><span className="status-pill">Server persisted</span></div></div>
       <table className="activity-table admin-workspace-table"><thead><tr><th>Customer</th><th>Account status</th><th>Accounts</th><th>Password</th><th></th></tr></thead><tbody>{customers.map((customer)=>{
         const customerAccounts=accounts.filter((account)=>account.userId===customer.userId);
         return <tr key={customer.userId}><td><div className="transaction-name"><span className="transaction-icon">{customer.firstName[0]}{customer.lastName[0]}</span><div><b>{customer.firstName} {customer.lastName}</b><small>{customer.userId} · {customer.email}</small></div></div></td><td><span className={`status-pill ${customer.accountStatus==="IN_REVIEW"?"warn":customer.accountStatus==="INACTIVE"?"block":""}`}>{accountStatusLabel(customer.accountStatus)}</span></td><td>{customerAccounts.length} · {formatMoney(customerAccounts.reduce((sum,account)=>sum+account.balanceMinor,0))}</td><td><span className={`status-pill ${customer.passwordResetRequired?"warn":""}`}>{customer.passwordResetRequired?"Change required":"Current"}</span></td><td className="row-action"><button type="button" onClick={()=>manage(customer.userId)}>Manage</button></td></tr>;
       })}</tbody></table>
       {customers.length===0&&<div className="empty-ledger">No customer profiles have been created.</div>}
     </section>
+    {creating&&<div className="customer-admin-drawer customer-create-drawer">
+      <div className="customer-admin-drawer-head"><div><span><Users size={18}/></span><div><h3>Create customer profile</h3><p>Creates a fresh, empty profile awaiting KYC approval.</p></div></div><button type="button" onClick={()=>{setCreating(false);setError("");}}><XCircle size={17}/></button></div>
+      <form className="customer-control-form customer-create-form" onSubmit={createProfile}>
+        {error&&<div className="auth-error" role="alert">{error}</div>}
+        <div className="fresh-profile-callout"><Users size={18}/><div><b>Fresh customer record</b><span>No account, balance, card, beneficiary, loan, or transaction is created until staff completes the appropriate workflow.</span></div></div>
+        <div className="form-row"><div className="field"><label>FIRST NAME</label><input value={createFirstName} onChange={event=>setCreateFirstName(event.target.value)} required/></div><div className="field"><label>LAST NAME</label><input value={createLastName} onChange={event=>setCreateLastName(event.target.value)} required/></div></div>
+        <div className="field"><label>EMAIL ADDRESS</label><input value={createEmail} onChange={event=>setCreateEmail(event.target.value)} type="email" required/></div>
+        <div className="impact-preview"><b>Initial state</b><span>In review · email unverified · zero accounts · zero transactions</span></div>
+        <div className="decision-buttons"><button type="button" className="deny" onClick={()=>{setCreating(false);setError("");}}>Cancel</button><button type="submit" disabled={submitting}>{submitting?"Creating…":"Create profile"}</button></div>
+      </form>
+    </div>}
     {selected&&<div className="customer-admin-drawer">
       <div className="customer-admin-drawer-head"><div><span>{selected.firstName[0]}{selected.lastName[0]}</span><div><h3>{selected.firstName} {selected.lastName}</h3><p>{selected.userId} · {selected.email}</p></div></div><button type="button" onClick={()=>setSelectedId("")}><XCircle size={17}/></button></div>
       {error&&<div className="auth-error">{error}</div>}
@@ -779,7 +808,7 @@ function AdminCustomersWorkspace() {
 }
 
 function AdminKycWorkspace() {
-  const {customers,mutate}=useBankingData();
+  const {customers,mutate,refresh,error:loadError}=useBankingData();
   const pending=customers.filter((customer)=>customer.accountStatus==="IN_REVIEW");
   const [selectedId,setSelectedId]=useState("");
   const [reason,setReason]=useState("");
@@ -800,8 +829,9 @@ function AdminKycWorkspace() {
     finally{setSubmitting(false);}
   }
   return <>
-    <div className="overview-head"><div><h2>KYC review queue</h2><p>Approve applications to activate the customer and open their initial empty checking account.</p></div></div>
+    <div className="overview-head"><div><h2>KYC review queue</h2><p>Approve applications to activate the customer and open their initial empty checking account.</p></div><button type="button" className="primary-action" onClick={()=>void refresh()}><RefreshCw size={15}/>Refresh queue</button></div>
     {notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}
+    {loadError&&<div className="auth-error" role="alert">KYC applications could not be loaded: {loadError.replaceAll("_"," ")}</div>}
     <section className="section-card"><div className="section-title"><div><h2>Applications in review</h2><p>Newest verified customer applications awaiting an operations decision.</p></div><span className="status-pill warn">{pending.length} pending</span></div><table className="activity-table admin-workspace-table"><thead><tr><th>Applicant</th><th>Email verification</th><th>Submitted</th><th></th></tr></thead><tbody>{pending.map((customer)=><tr key={customer.userId}><td><div className="transaction-name"><span className="transaction-icon"><FileText size={13}/></span><div><b>{customer.firstName} {customer.lastName}</b><small>{customer.userId}</small></div></div></td><td><span className={`status-pill ${customer.emailVerifiedAt?"":"warn"}`}>{customer.emailVerifiedAt?"Verified":"Pending"}</span></td><td>{new Date(customer.createdAt).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})}</td><td className="row-action"><button type="button" onClick={()=>{setSelectedId(customer.userId);setReason("");setError("");}}>Review</button></td></tr>)}</tbody></table>{pending.length===0&&<div className="empty-ledger">No customer applications are waiting for review.</div>}</section>
     {selected&&<div className="customer-admin-drawer kyc-decision-drawer"><div className="customer-admin-drawer-head"><div><span>{selected.firstName[0]}{selected.lastName[0]}</span><div><h3>{selected.firstName} {selected.lastName}</h3><p>{selected.email} · verified identity application</p></div></div><button type="button" onClick={()=>setSelectedId("")}><XCircle size={17}/></button></div>{error&&<div className="auth-error">{error}</div>}<div className="review-document"><FileText size={22}/><div><b>Identity application</b><span>Email verified · customer profile created empty</span></div><span className="status-pill warn">In review</span></div><div className="field"><label>DECISION REASON</label><textarea value={reason} onChange={(event)=>setReason(event.target.value)} required placeholder="Record the KYC approval or rejection rationale"/></div><div className="impact-preview"><b>Approval result</b><span>The customer becomes Active and receives one checking account with a $0.00 balance and no transaction history.</span></div><div className="decision-buttons"><button type="button" className="deny" disabled={submitting} onClick={()=>decide("REJECT")}>Reject & mark inactive</button><button type="button" disabled={submitting} onClick={()=>decide("APPROVE")}>Approve & activate</button></div></div>}
   </>;
@@ -1254,6 +1284,8 @@ const defaultWebsiteSettings: WebsiteSettingsForm = {
 };
 
 function AdminWebsiteWorkspace() {
+  const {brandProfiles}=useBankingData();
+  const activeBrand=brandProfiles.find((brand)=>brand.active)??null;
   const [settings,setSettings] = useState<WebsiteSettingsForm>(defaultWebsiteSettings);
   const [revisions,setRevisions] = useState<WebsiteRevisionSummary[]>([]);
   const [publishedRevision,setPublishedRevision] = useState<WebsiteRevisionSummary | null>(null);
@@ -1268,6 +1300,7 @@ function AdminWebsiteWorkspace() {
 
   async function loadSettings() {
     setLoading(true);
+    setError("");
     try {
       const response = await fetch("/admin/api/website", { cache: "no-store" });
       const result = await response.json() as {
@@ -1280,6 +1313,7 @@ function AdminWebsiteWorkspace() {
       setSettings(result.published ?? defaultWebsiteSettings);
       setPublishedRevision(result.publishedRevision ?? null);
       setRevisions(result.revisions ?? []);
+      setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message.replaceAll("_"," ") : "Website settings could not be loaded");
     } finally {
@@ -1287,7 +1321,7 @@ function AdminWebsiteWorkspace() {
     }
   }
 
-  useEffect(()=>{const timer=window.setTimeout(()=>void loadSettings(),0);return()=>window.clearTimeout(timer);},[]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void loadSettings(),0);const channel=new BroadcastChannel("northstar-website");channel.onmessage=()=>void loadSettings();return()=>{window.clearTimeout(timer);channel.close();};},[]);
 
   function updateSetting<Key extends keyof WebsiteSettingsForm>(key: Key, value: WebsiteSettingsForm[Key]) {
     setSettings((current)=>({ ...current, [key]: value }));
@@ -1329,7 +1363,7 @@ function AdminWebsiteWorkspace() {
   }
 
   return <>
-    <div className="overview-head"><div><h2>Website management</h2><p>Publish landing-page messaging, product visibility, support details, and maintenance state.</p></div><Link href="/" className="primary-action" target="_blank"><Globe2 size={14}/>Open public site</Link></div>
+    <div className="overview-head"><div><h2>Website management</h2><p>Publish landing-page messaging, product visibility, support details, and maintenance state.</p></div><div className="table-tools"><button type="button" onClick={()=>void loadSettings()}><RefreshCw size={14}/>Refresh</button><Link href="/" className="primary-action" target="_blank"><Globe2 size={14}/>Open public site</Link></div></div>
     {notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}
     {error&&<div className="auth-error website-settings-error">{error}</div>}
     <div className="website-management-metrics">
@@ -1341,7 +1375,7 @@ function AdminWebsiteWorkspace() {
       <form className="section-card website-settings-form" onSubmit={save}>
         <div className="section-title"><div><h2>Public website settings</h2><p>{loading ? "Loading the published configuration…" : "Every save creates a versioned, auditable revision."}</p></div><span className="status-pill">Server persisted</span></div>
         <div className="website-settings-body">
-          <div className="form-row"><div className="field"><label>PUBLICATION STATUS</label><select value={publicationStatus} onChange={(event)=>setPublicationStatus(event.target.value as typeof publicationStatus)}><option value="PUBLISHED">Publish immediately</option><option value="DRAFT">Save draft</option><option value="SCHEDULED">Schedule publication</option></select></div><div className="field"><label>SUPPORT EMAIL</label><input type="email" value={settings.supportEmail} onChange={(event)=>updateSetting("supportEmail",event.target.value)} required/></div></div>
+          <div className="form-row"><div className="field"><label>PUBLICATION STATUS</label><select value={publicationStatus} onChange={(event)=>setPublicationStatus(event.target.value as typeof publicationStatus)}><option value="PUBLISHED">Publish immediately</option><option value="DRAFT">Save draft</option><option value="SCHEDULED">Schedule publication</option></select></div><div className="field"><label>FALLBACK SUPPORT EMAIL</label><input type="email" value={settings.supportEmail} onChange={(event)=>updateSetting("supportEmail",event.target.value)} required/><small>{activeBrand?`The active ${activeBrand.shortName} brand currently publishes ${activeBrand.supportEmail}.`:"Used when no active brand profile is available."}</small></div></div>
           {publicationStatus==="SCHEDULED"&&<div className="field"><label>SCHEDULED DATE AND TIME</label><input type="datetime-local" min={minimumWebsiteSchedule} value={scheduledFor} onChange={(event)=>setScheduledFor(event.target.value)} required/></div>}
           <div className="field"><label>LANDING PAGE HERO HEADING</label><input value={settings.heroHeading} onChange={(event)=>updateSetting("heroHeading",event.target.value)} minLength={5} maxLength={120} required/></div>
           <div className="field"><label>LANDING PAGE HERO MESSAGE</label><textarea value={settings.heroMessage} onChange={(event)=>updateSetting("heroMessage",event.target.value)} minLength={10} maxLength={500} required/></div>
@@ -1356,7 +1390,7 @@ function AdminWebsiteWorkspace() {
         <div className="website-preview-hero"><small>PERSONAL BANKING</small><h3>{settings.heroHeading}</h3><p>{settings.heroMessage}</p><span>Open an account <ArrowUpRight size={13}/></span></div>
         {settings.maintenanceMode&&<div className="website-preview-maintenance"><ShieldAlert size={16}/><div><b>Scheduled maintenance</b><span>Customers will see a service notice while the site remains accessible.</span></div></div>}
         <div className="website-preview-products">{settings.showChecking&&<span>Checking</span>}{settings.showSavings&&<span>Savings</span>}{settings.showLoans&&<span>Loans</span>}{!settings.showChecking&&!settings.showSavings&&!settings.showLoans&&<small>No public products selected</small>}</div>
-        <div className="website-preview-support"><Headphones size={15}/><span>Support: {settings.supportEmail}</span></div>
+        <div className="website-preview-support"><Headphones size={15}/><span>Support: {activeBrand?.supportEmail??settings.supportEmail}</span></div>
       </aside>
     </div>
     <section className="section-card website-revision-history">

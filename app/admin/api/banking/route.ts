@@ -35,7 +35,9 @@ export async function GET(request:Request) {
     return NextResponse.json({ error: "STAFF_AUTH_REQUIRED" }, { status: 401 });
   }
   try {
-    return NextResponse.json(await getSimulationBank());
+    const response=NextResponse.json(await getSimulationBank());
+    response.headers.set("cache-control","private, no-store, max-age=0");
+    return response;
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "BANKING_READ_FAILED" }, { status: 500 });
   }

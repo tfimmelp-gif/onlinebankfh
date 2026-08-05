@@ -82,6 +82,7 @@ export function CustomerSignupForm() {
   }
 
   return <form onSubmit={submit}>
+    <div className="fresh-profile-callout"><MailCheck size={18}/><div><b>Email verification required</b><span>Your application is added to the staff KYC queue immediately after the six-digit email code is verified.</span></div></div>
     <div className="form-row">
       <div className="field"><label>FIRST NAME</label><input name="firstName" placeholder="Alex" required/></div>
       <div className="field"><label>LAST NAME</label><input name="lastName" placeholder="Morgan" required/></div>

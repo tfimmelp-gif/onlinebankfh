@@ -167,11 +167,16 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
   const [brandProfiles,setBrandProfiles]=useState<BankingBrandProfile[]>([]);
   const [processingFeeRules,setProcessingFeeRules]=useState<BankingProcessingFeeRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error,setError]=useState("");
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch(mode === "customer" ? "/api/customer/banking" : "/admin/api/banking", { cache: "no-store" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        const failure=await response.json().catch(()=>({error:"BANKING_READ_FAILED"})) as {error?:string};
+        setError(failure.error??"BANKING_READ_FAILED");
+        return;
+      }
       const data = await response.json() as {
         customers?: BankingCustomer[];
         accounts: BankingAccount[];
@@ -204,21 +209,25 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
       setCustomerActivity(data.customerActivity??[]);
       setBrandProfiles(data.brandProfiles??[]);
       setProcessingFeeRules(data.processingFeeRules??[]);
+      setError("");
+    } catch {
+      setError("BANKING_READ_FAILED");
     } finally {
       setLoading(false);
     }
   }, [mode]);
 
   useEffect(() => {
-    refresh();
+    const initialRefresh=window.setTimeout(() => void refresh(),0);
     const channel = new BroadcastChannel("northstar-banking");
     channel.onmessage = () => refresh();
-    const scheduledTransferTimer = mode === "customer"
-      ? window.setInterval(() => { if(document.visibilityState==="visible")void refresh(); }, 30_000)
-      : undefined;
+    const refreshTimer = window.setInterval(() => {
+      if(document.visibilityState==="visible")void refresh();
+    }, mode === "admin" ? 5_000 : 30_000);
     return () => {
+      window.clearTimeout(initialRefresh);
       channel.close();
-      if (scheduledTransferTimer) window.clearInterval(scheduledTransferTimer);
+      window.clearInterval(refreshTimer);
     };
   }, [mode, refresh]);
 
@@ -230,6 +239,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
     });
     const result = await response.json() as {
       error?: string;
+      id?: string;
       reference?: string;
       generatedCode?: string;
       codeHint?: string;
@@ -318,6 +328,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
   }, [refresh]);
 
   return {
+    error,
     customers,
     accounts,
     transactions,

@@ -1145,8 +1145,15 @@ async function ensureActiveCustomersHaveDepositMethods() {
     bank_name AS bankName, account_name AS accountName, account_number AS accountNumber,
     routing_number AS routingNumber, swift_bic AS swiftBic, crypto_asset AS cryptoAsset,
     crypto_network AS cryptoNetwork, wallet_address AS walletAddress, instructions
-    FROM sim_customer_deposit_methods WHERE active = 1
-    GROUP BY method_type ORDER BY updated_at DESC`).all<SimDepositMethod>();
+    FROM (
+      SELECT m.*, ROW_NUMBER() OVER (
+        PARTITION BY method_type ORDER BY updated_at DESC, id DESC
+      ) AS template_rank
+      FROM sim_customer_deposit_methods m
+      WHERE active = 1
+    ) ranked
+    WHERE template_rank = 1
+    ORDER BY method_type`).all<SimDepositMethod>();
   if (!templates.results.length) return 0;
   const missing = await db.prepare(`SELECT d.user_id AS userId, d.first_name AS firstName,
     d.last_name AS lastName FROM sim_customer_directory d
@@ -1413,7 +1420,9 @@ export async function getActiveSimulationBrand() {
 
 export async function saveSimulationBrand(input:{id?:string;bankName:string;shortName:string;supportEmail:string;logoUrl?:string|null;primaryColor:string;updatedBy:string}) {
   await initializeSimulationBank();
-  if(!input.bankName.trim()||!input.shortName.trim()||!/^\S+@\S+\.\S+$/.test(input.supportEmail))throw new Error("BRAND_DETAILS_INVALID");
+  const bankName=input.bankName.trim();const shortName=input.shortName.trim();const supportEmail=input.supportEmail.trim().toLowerCase();const logoUrl=input.logoUrl?.trim()||null;
+  if(!bankName||bankName.length>120||!shortName||shortName.length>30||supportEmail.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail))throw new Error("BRAND_DETAILS_INVALID");
+  if(logoUrl&&!logoUrl.startsWith("/api/brand/logo?key=branding%2F")&&!/^https:\/\/[a-z0-9.-]+(?::\d+)?(?:\/|$)/i.test(logoUrl))throw new Error("BRAND_LOGO_URL_INVALID");
   if(!/^#[0-9a-fA-F]{6}$/.test(input.primaryColor))throw new Error("BRAND_COLOR_INVALID");
   const id=input.id||`brand-${crypto.randomUUID()}`;const updatedAt=new Date().toISOString();
   await database().batch([database().prepare(`INSERT INTO sim_brand_profiles
@@ -1421,7 +1430,7 @@ export async function saveSimulationBrand(input:{id?:string;bankName:string;shor
     VALUES (?,?,?,?,?,?,0,?,?) ON CONFLICT(id) DO UPDATE SET bank_name=excluded.bank_name,
     short_name=excluded.short_name,support_email=excluded.support_email,logo_url=excluded.logo_url,
     primary_color=excluded.primary_color,updated_at=excluded.updated_at,updated_by=excluded.updated_by`)
-    .bind(id,input.bankName.trim(),input.shortName.trim(),input.supportEmail.trim().toLowerCase(),input.logoUrl?.trim()||null,input.primaryColor,updatedAt,input.updatedBy)]);
+    .bind(id,bankName,shortName,supportEmail,logoUrl,input.primaryColor,updatedAt,input.updatedBy)]);
   return {id,updatedAt};
 }
 
