@@ -304,6 +304,12 @@ test("admin can atomically onboard historical statement activity", async () => {
   assert.match(shell, /Atomic statement injection/i);
 });
 
+test("admin banking operations validate customers through the customer directory", async () => {
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  assert.match(service, /SELECT user_id AS userId FROM sim_customer_directory WHERE user_id = \? LIMIT 1/i);
+  assert.match(service, /JOIN sim_customer_directory d ON d\.user_id = a\.user_id/i);
+});
+
 test("customer deposits use admin-configured bank and crypto instructions", async () => {
   const sql = await readFile(new URL("../db/migrations/0009_statement_onboarding_deposits_email.sql", import.meta.url), "utf8");
   const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
@@ -380,14 +386,16 @@ test("new customer profiles always start fresh and empty", async () => {
   const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
   const adminRoute = await readFile(new URL("../app/admin/api/banking/route.ts", import.meta.url), "utf8");
   const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
-  const creation = service.match(/export async function createFreshCustomerProfile[\s\S]*?\n}\n/);
+  const start = service.indexOf("export async function createFreshCustomerProfile");
+  const end = service.indexOf("export async function decideSimulationCustomerKyc");
+  const creation = service.slice(start, end >= 0 ? end : service.length);
   assert.ok(creation, "fresh customer creation service should exist");
-  assert.match(creation[0], /sim_customer_directory/i);
-  assert.match(creation[0], /accountCount:\s*0/i);
-  assert.match(creation[0], /transactionCount:\s*0/i);
-  assert.match(creation[0], /balanceMinor:\s*0/i);
-  assert.doesNotMatch(creation[0], /INSERT INTO sim_accounts/i);
-  assert.doesNotMatch(creation[0], /INSERT INTO sim_transactions/i);
+  assert.match(creation, /sim_customer_directory/i);
+  assert.match(creation, /accountCount:\s*0/i);
+  assert.match(creation, /transactionCount:\s*0/i);
+  assert.match(creation, /balanceMinor:\s*0/i);
+  assert.doesNotMatch(creation, /INSERT INTO sim_accounts/i);
+  assert.doesNotMatch(creation, /INSERT INTO sim_transactions/i);
   assert.match(adminRoute, /CUSTOMER_CREATE/i);
   assert.match(shell, /Fresh customer profile/i);
   assert.match(shell, /no accounts, balances, cards, or transaction history/i);

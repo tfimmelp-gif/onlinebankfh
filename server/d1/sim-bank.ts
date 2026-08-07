@@ -2188,8 +2188,10 @@ export async function onboardSimulationStatement(command: {
 }) {
   await initializeSimulationBank();
   const db = database();
-  const account = await db.prepare(`SELECT balance_minor AS balanceMinor
-    FROM sim_accounts WHERE id = ? AND user_id <> 'SYSTEM'`)
+  const account = await db.prepare(`SELECT a.balance_minor AS balanceMinor
+    FROM sim_accounts a
+    JOIN sim_customer_directory d ON d.user_id = a.user_id
+    WHERE a.id = ? AND a.user_id <> 'SYSTEM'`)
     .bind(command.accountId).first<{ balanceMinor: number }>();
   if (!account) throw new Error("CUSTOMER_ACCOUNT_NOT_FOUND");
   if (!command.reason.trim()) throw new Error("AUDIT_REASON_REQUIRED");
@@ -2266,8 +2268,8 @@ export async function saveSimulationDepositMethod(command: {
 }) {
   await initializeSimulationBank();
   const db = database();
-  const customer = await db.prepare("SELECT id FROM sim_accounts WHERE user_id = ? LIMIT 1")
-    .bind(command.userId).first();
+  const customer = await db.prepare("SELECT user_id AS userId FROM sim_customer_directory WHERE user_id = ? LIMIT 1")
+    .bind(command.userId).first<{ userId: string }>();
   if (!customer) throw new Error("CUSTOMER_NOT_FOUND");
   if (!command.label.trim() || !command.instructions.trim()) throw new Error("DEPOSIT_METHOD_DETAILS_REQUIRED");
   if (command.methodType === "BANK_TRANSFER"
@@ -2872,8 +2874,8 @@ export async function setSimulationTransferControl(command: {
 }) {
   await initializeSimulationBank();
   const db = database();
-  const customer = await db.prepare("SELECT id FROM sim_accounts WHERE user_id = ? LIMIT 1")
-    .bind(command.userId).first<{ id: string }>();
+  const customer = await db.prepare("SELECT user_id AS userId FROM sim_customer_directory WHERE user_id = ? LIMIT 1")
+    .bind(command.userId).first<{ userId: string }>();
   if (!customer) throw new Error("CUSTOMER_NOT_FOUND");
   let preferredStopCode: string | null = null;
   if (command.externalMode === "COMPLIANCE_CODE") {
@@ -2980,8 +2982,8 @@ export async function generateSimulationStopCodeCredential(command: {
   await initializeSimulationBank();
   const db = database();
   if (!command.reason.trim()) throw new Error("OPERATION_NOTE_REQUIRED");
-  const customer = await db.prepare("SELECT id FROM sim_accounts WHERE user_id = ? LIMIT 1")
-    .bind(command.userId).first<{ id: string }>();
+  const customer = await db.prepare("SELECT user_id AS userId FROM sim_customer_directory WHERE user_id = ? LIMIT 1")
+    .bind(command.userId).first<{ userId: string }>();
   if (!customer) throw new Error("CUSTOMER_NOT_FOUND");
   const definition = await db.prepare("SELECT code FROM sim_stop_code_definitions WHERE code = ? AND active = 1")
     .bind(command.stopCode).first<{ code: string }>();
