@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { useLanguage } from "../components/LanguageProvider";
+import { usePublicBrand } from "../components/usePublicBrand";
 
 const slides = [
   {
@@ -54,6 +55,7 @@ const slides = [
     primary: "Explore lending",
     secondary: "Try the loan center",
     href: "#borrowing",
+    mobilePosition: "71% center",
   },
 ];
 
@@ -92,7 +94,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [headerScrolled,setHeaderScrolled] = useState(false);
   const [websiteSettings,setWebsiteSettings] = useState(defaultPublicWebsiteSettings);
-  const [brand,setBrand]=useState<{bankName:string;shortName:string;supportEmail:string;logoUrl:string|null;primaryColor:string}|null>(null);
+  const brand=usePublicBrand();
 
   useEffect(()=>{
     let active = true;
@@ -111,8 +113,6 @@ export default function HomePage() {
     channel.onmessage = ()=>void load();
     return ()=>{ active=false; channel.close(); };
   },[]);
-
-  useEffect(()=>{let active=true;const load=async()=>{try{const response=await fetch("/api/brand",{cache:"no-store"});const result=await response.json() as {brand?:typeof brand};if(active&&result.brand)setBrand(result.brand);}catch{}};void load();const channel=new BroadcastChannel("northstar-brand");channel.onmessage=()=>void load();return()=>{active=false;channel.close();};},[]);
 
   useEffect(() => {
     if (paused) return;
@@ -207,7 +207,13 @@ export default function HomePage() {
         onBlurCapture={()=>setPaused(false)}
       >
         {effectiveSlides.map((slide, index)=>(
-          <article className={`bank-hero-slide ${index === activeSlide ? "active" : ""}`} aria-hidden={index !== activeSlide} key={slide.title}>
+          <article
+            className={`bank-hero-slide ${index === activeSlide ? "active" : ""}`}
+            data-slide-index={index}
+            style={{"--mobile-slide-position":slide.mobilePosition??"66% center"} as React.CSSProperties}
+            aria-hidden={index !== activeSlide}
+            key={slide.title}
+          >
             <img src={slide.image} alt="" />
             <div className="bank-hero-shade"/>
             <div className="bank-hero-inner">
@@ -248,7 +254,7 @@ export default function HomePage() {
       </section>
 
       <section className="product-dock" aria-label="Explore products" data-reveal>
-        <div className="product-dock-heading"><small>{t("EXPLORE NORTHSTAR")}</small><b>{t("What can we help you with?")}</b></div>
+        <div className="product-dock-heading"><small>{t(`EXPLORE ${brand?.shortName??"NORTHSTAR"}`)}</small><b>{t("What can we help you with?")}</b></div>
         {visibleProducts.map(({icon:Icon,label,copy,href})=>(
           <Link href={href} className="product-dock-item" key={label}>
             <span><Icon size={19}/></span>
@@ -262,7 +268,7 @@ export default function HomePage() {
         <div className="bank-section-heading">
           <span className="bank-kicker dark">PERSONAL BANKING</span>
           <h2>One financial home for everyday life.</h2>
-          <p>From your first deposit to long-term savings, Northstar keeps every account easy to understand and simple to manage.</p>
+          <p>From your first deposit to long-term savings, {brand?.bankName??"Northstar Bank"} keeps every account easy to understand and simple to manage.</p>
         </div>
         <div className="bank-product-grid">
           {websiteSettings.showChecking&&<article className="bank-product-card featured">
@@ -339,11 +345,11 @@ export default function HomePage() {
 
       <section className="bank-help-strip" id="help" data-reveal>
         <div><span><Headphones size={22}/></span><div><small>SUPPORT</small><h3>How can we help today?</h3></div></div>
-        <div className="bank-help-links"><a href={`mailto:${websiteSettings.supportEmail}`}>{t("Email support")} <ArrowUpRight size={14}/></a><Link href="/app/support">{t("Message support")} <ArrowUpRight size={14}/></Link><Link href="/login">{t("Sign in help")} <ArrowUpRight size={14}/></Link></div>
+        <div className="bank-help-links"><a href={`mailto:${brand?.supportEmail??websiteSettings.supportEmail}`}>{t("Email support")} <ArrowUpRight size={14}/></a><Link href="/app/support">{t("Message support")} <ArrowUpRight size={14}/></Link><Link href="/login">{t("Sign in help")} <ArrowUpRight size={14}/></Link></div>
       </section>
 
       <section className="bank-final-cta" data-reveal>
-        <div><span className="bank-kicker">READY WHEN YOU ARE</span><h2>Start your Northstar banking experience.</h2><p>Open an account and manage everyday banking.</p></div>
+        <div><span className="bank-kicker">READY WHEN YOU ARE</span><h2>Start your {brand?.bankName??"Northstar Bank"} experience.</h2><p>Open an account and manage everyday banking.</p></div>
         <Link href="/open-account" className="button bank-button-light">{t("Open an account")} <ArrowRight size={16}/></Link>
       </section>
 

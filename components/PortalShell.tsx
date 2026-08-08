@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -853,7 +853,11 @@ function AdminTransferQueue() {
   const initialControl = transferControls.find((control)=>control.userId===controlUserId);
   const [controlMode,setControlMode] = useState<"STANDARD_APPROVAL"|"COMPLIANCE_CODE">(initialControl?.externalMode ?? "STANDARD_APPROVAL");
   const [preferredStopCode,setPreferredStopCode] = useState(initialControl?.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");
+  // Guards the mode/stop-code controls from being reset by background refresh
+  // polls while the operator has an unsaved selection in progress.
+  const controlDirtyRef = useRef(false);
   useEffect(()=>{
+    if (controlDirtyRef.current) return;
     const control = transferControls.find((item)=>item.userId===controlUserId);
     if (!control) return;
     const frame=window.requestAnimationFrame(()=>{setControlMode(control.externalMode);setPreferredStopCode(control.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");});
@@ -974,9 +978,9 @@ function AdminTransferQueue() {
     <section className="admin-transfer-policy">
       <div className="section-title"><div><h2>Customer external-transfer mode</h2><p>Mode 1 uses staff approval. Mode 2 applies the customer’s preferred compliance stop code.</p></div></div>
       <div className="policy-control-grid">
-        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
-        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>setControlMode(event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE")}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
-        <div className="field"><label>PREFERRED STOP CODE</label><select value={preferredStopCode} disabled={controlMode!=="COMPLIANCE_CODE"} onChange={(event)=>setPreferredStopCode(event.target.value)}>{stopCodes.filter((code)=>code.active).map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
+        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);controlDirtyRef.current=false;setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
+        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>{controlDirtyRef.current=true;setControlMode(event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE");}}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
+        <div className="field"><label>PREFERRED STOP CODE</label><select value={preferredStopCode} disabled={controlMode!=="COMPLIANCE_CODE"} onChange={(event)=>{controlDirtyRef.current=true;setPreferredStopCode(event.target.value);}}>{stopCodes.filter((code)=>code.active).map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
         <button type="button" className="inline-submit" disabled={submitting||controlMode==="COMPLIANCE_CODE"&&!preferredStopCode} onClick={saveTransferControl}>Save transfer mode</button>
       </div>
     </section>
