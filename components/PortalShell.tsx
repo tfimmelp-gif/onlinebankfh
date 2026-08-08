@@ -29,6 +29,7 @@ import {
   Landmark,
   LockKeyhole,
   LogOut,
+  Menu,
   PiggyBank,
   Plus,
   RefreshCw,
@@ -178,6 +179,7 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
   const pathname = usePathname();
   const isAdmin = mode === "admin";
   const [customerMenuOpen,setCustomerMenuOpen] = useState(false);
+  const [mobileAdminNavOpen,setMobileAdminNavOpen] = useState(false);
   const { customers: sessionCustomers,brandProfiles } = useBankingData(isAdmin ? "admin" : "customer");
   const activeBrand=brandProfiles.find((brand)=>brand.active)??brandProfiles[0];
   const signedInCustomer = sessionCustomers[0];
@@ -226,7 +228,8 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
         </aside>
         <section className="portal-main">
           <header className="portal-header">
-            <div><h1>{title}</h1><p><LivePortalDateTime isAdmin={isAdmin}/></p></div>
+            {isAdmin&&<button type="button" className="mobile-admin-nav-trigger" aria-label={t("Open admin navigation")} aria-expanded={mobileAdminNavOpen} onClick={()=>setMobileAdminNavOpen(true)}><Menu size={19}/></button>}
+            <div className="portal-header-title"><h1>{title}</h1><p><LivePortalDateTime isAdmin={isAdmin}/></p></div>
             <div className="header-tools"><button aria-label="Search"><Search size={15} /></button><button aria-label="Notifications"><Bell size={15} /></button>{isAdmin ? <button aria-label="Sign out" onClick={signOutAdmin}><LogOut size={15}/></button> : <div className="customer-menu-wrap"><button className="customer-menu-trigger" aria-label="Customer menu" aria-expanded={customerMenuOpen} onClick={()=>setCustomerMenuOpen((open)=>!open)}><span>{customerInitials}</span><ChevronDown size={14}/></button>{customerMenuOpen&&<div className="customer-menu" role="menu"><div><b>{customerName}</b><small>Customer {customerNumber}</small></div><Link role="menuitem" href="/app/profile" onClick={()=>setCustomerMenuOpen(false)}><Users size={14}/>Profile & identity</Link><Link role="menuitem" href="/app/security" onClick={()=>setCustomerMenuOpen(false)}><LockKeyhole size={14}/>Security center</Link><Link role="menuitem" href="/app/statements" onClick={()=>setCustomerMenuOpen(false)}><FileText size={14}/>Statements</Link><Link role="menuitem" href="/app/support" onClick={()=>setCustomerMenuOpen(false)}><Headphones size={14}/>Support</Link><button type="button" role="menuitem" className="customer-menu-logout" onClick={signOutCustomer}><LogOut size={14}/>Log out</button></div>}</div>}</div>
           </header>
           <div className="portal-content">
@@ -234,6 +237,18 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
           </div>
         </section>
       </div>
+      {isAdmin&&mobileAdminNavOpen&&<div className="mobile-admin-nav-backdrop" role="presentation" onClick={()=>setMobileAdminNavOpen(false)}>
+        <aside className="mobile-admin-nav-drawer" role="dialog" aria-modal="true" aria-label={t("Admin navigation")} onClick={(event)=>event.stopPropagation()}>
+          <div className="mobile-admin-nav-head">
+            <Link href="/" className="portal-brand" onClick={()=>setMobileAdminNavOpen(false)}><span>{activeBrand?.logoUrl?<img src={activeBrand.logoUrl} alt=""/>:<Sparkles size={16}/>}</span>{activeBrand?.shortName??"NORTHSTAR"}</Link>
+            <button type="button" aria-label={t("Close admin navigation")} onClick={()=>setMobileAdminNavOpen(false)}><X size={19}/></button>
+          </div>
+          <nav className="portal-nav">
+            {adminNav.map((item,index)=>item.section?<div className="nav-section" key={`${item.section}-${index}`}>{t(item.section)}</div>:<Link key={item.href} href={item.href!} className={pathname===item.href?"active":""} onClick={()=>setMobileAdminNavOpen(false)}>{item.icon&&<item.icon size={17}/>} {t(item.label??"")}</Link>)}
+          </nav>
+          <div className="mobile-admin-account"><span>SO</span><div><b>Sarah Okafor</b><small>{t("Operations admin")}</small></div><button type="button" aria-label={t("Sign out")} onClick={signOutAdmin}><LogOut size={16}/></button></div>
+        </aside>
+      </div>}
     </main>
   );
 }
@@ -1016,6 +1031,10 @@ function AdminTransferQueue() {
 
   async function generateComplianceCode() {
     if (!selected) return;
+    if(!reason.trim()){
+      setError("Enter an operation note before generating the customer code.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -1074,7 +1093,7 @@ function AdminTransferQueue() {
         <div className="field"><label>REQUIRED OPERATION NOTE</label><textarea value={reason} onChange={(event)=>setReason(event.target.value)} placeholder="Record how the compliance-code request was handled"/></div>
         <div className="transfer-decision-actions compliance-actions">
           <button type="button" className="reject" disabled={submitting} onClick={()=>decide("REJECT")}><XCircle size={15}/>Reject transfer</button>
-          <button type="button" className="flag" disabled={submitting||selected.holdState==="AWAITING_CODE"} onClick={generateComplianceCode}><KeyRound size={15}/>{selected.holdState==="CODE_ISSUED"?"Regenerate code":"Generate code to send"}</button>
+          <button type="button" className="flag" disabled={submitting||selected.holdState==="AWAITING_CODE"||!reason.trim()} onClick={generateComplianceCode}><KeyRound size={15}/>{selected.holdState==="CODE_ISSUED"?"Regenerate code":"Generate code to send"}</button>
         </div>
       </>:["PENDING","PROCESSING"].includes(selected.status)?<>
         <div className="field"><label>REQUIRED DECISION REASON</label><textarea value={reason} onChange={(event)=>setReason(event.target.value)} placeholder="Record the approval, rejection, or review rationale" required/></div>
@@ -1099,7 +1118,7 @@ function AdminTransferQueue() {
             <td><span className={`status-pill ${statusBadge(request.status)}`}>{requestStatusLabel(request)}</span></td>
             <td>{new Date(request.requestedAt).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"})}</td>
             <td className="money">{formatMoney(request.amountMinor)}</td>
-            <td className="row-action"><button type="button" onClick={()=>{setSelected(request);setReason("");setError("");setGeneratedCode("");}}>Review</button></td>
+            <td className="row-action"><button type="button" onClick={()=>{setSelected(request);setReason(request.transferMode==="COMPLIANCE_CODE"?"Compliance release code generated for the customer after operations review.":"");setError("");setGeneratedCode("");}}>Review</button></td>
           </tr>)}</tbody>
         </table>
       </section>)}

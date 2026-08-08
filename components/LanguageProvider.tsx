@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Globe2 } from "lucide-react";
 
 export type AppLocale = "en" | "es" | "fr" | "de" | "pt" | "ar" | "zh";
@@ -53,6 +53,31 @@ const translations: Partial<Record<AppLocale, Record<string, string>>> = {
   },
 };
 
+const interfaceTranslations: Partial<Record<AppLocale, Record<string,string>>> = {
+  es: {
+    "Operations center":"Centro de operaciones","Open admin navigation":"Abrir navegación administrativa","Close admin navigation":"Cerrar navegación administrativa","Admin navigation":"Navegación administrativa","Operations admin":"Administrador de operaciones","Sign out":"Cerrar sesión","Search":"Buscar","Notifications":"Notificaciones","Multi-branding":"Gestión de marcas","E-currency methods":"Métodos de moneda electrónica","Transfer errors":"Errores de transferencias","Statement onboarding":"Carga de extractos","External transfer approvals":"Aprobaciones de transferencias externas","Customer":"Cliente","Transfer mode":"Modo de transferencia","Preferred stop code":"Código de bloqueo preferido","Save transfer mode":"Guardar modo","Generate code to send":"Generar código para enviar","Regenerate code":"Regenerar código","Required operation note":"Nota operativa obligatoria","Customer conversations":"Conversaciones de clientes","customers":"clientes","waiting":"en espera","No messages yet":"Aún no hay mensajes","New":"Nuevo","Needs reply":"Requiere respuesta","Closed":"Cerrado","Open":"Abierto","Select a customer":"Seleccione un cliente","Choose a customer conversation from the inbox":"Elija una conversación de la bandeja","Select a customer to open their conversation":"Seleccione un cliente para abrir la conversación","Reply to customer…":"Responder al cliente…","Select a customer first":"Seleccione primero un cliente","Live support":"Asistencia en vivo","Online":"En línea","Sending":"Enviando","Send":"Enviar","Live chat message":"Mensaje de chat","Multi-brand management":"Gestión de múltiples marcas","New brand":"Nueva marca","Save brand profile":"Guardar perfil de marca","Brand profiles":"Perfiles de marca","Edit":"Editar","Activate":"Activar","ACTIVE":"ACTIVO","INACTIVE":"INACTIVO","Create profile":"Crear perfil","Refresh":"Actualizar"
+  },
+  fr: {
+    "Operations center":"Centre des opérations","Open admin navigation":"Ouvrir la navigation d’administration","Close admin navigation":"Fermer la navigation d’administration","Admin navigation":"Navigation d’administration","Operations admin":"Administrateur des opérations","Sign out":"Déconnexion","Search":"Rechercher","Notifications":"Notifications","Multi-branding":"Gestion multimarque","External transfer approvals":"Approbations des virements externes","Customer":"Client","Transfer mode":"Mode de virement","Preferred stop code":"Code de blocage préféré","Save transfer mode":"Enregistrer le mode","Generate code to send":"Générer le code à envoyer","Regenerate code":"Régénérer le code","Required operation note":"Note opérationnelle obligatoire","Customer conversations":"Conversations clients","customers":"clients","waiting":"en attente","No messages yet":"Aucun message","New":"Nouveau","Needs reply":"Réponse requise","Closed":"Fermé","Open":"Ouvert","Select a customer":"Sélectionnez un client","Choose a customer conversation from the inbox":"Choisissez une conversation dans la boîte de réception","Select a customer to open their conversation":"Sélectionnez un client pour ouvrir la conversation","Reply to customer…":"Répondre au client…","Select a customer first":"Sélectionnez d’abord un client","Live support":"Assistance en direct","Online":"En ligne","Sending":"Envoi","Send":"Envoyer","Live chat message":"Message du chat","Multi-brand management":"Gestion multimarque","New brand":"Nouvelle marque","Save brand profile":"Enregistrer le profil de marque","Brand profiles":"Profils de marque","Edit":"Modifier","Activate":"Activer","ACTIVE":"ACTIF","INACTIVE":"INACTIF","Create profile":"Créer un profil","Refresh":"Actualiser"
+  },
+  de: {
+    "Operations center":"Betriebszentrale","Open admin navigation":"Admin-Navigation öffnen","Close admin navigation":"Admin-Navigation schließen","Admin navigation":"Admin-Navigation","Operations admin":"Betriebsadministrator","Sign out":"Abmelden","Search":"Suchen","Notifications":"Benachrichtigungen","Multi-branding":"Mehrmarkenverwaltung","External transfer approvals":"Freigaben externer Überweisungen","Customer":"Kunde","Transfer mode":"Überweisungsmodus","Preferred stop code":"Bevorzugter Sperrcode","Save transfer mode":"Modus speichern","Generate code to send":"Code zum Senden erzeugen","Regenerate code":"Code neu erzeugen","Required operation note":"Erforderliche Betriebsnotiz","Customer conversations":"Kundengespräche","customers":"Kunden","waiting":"wartend","No messages yet":"Noch keine Nachrichten","New":"Neu","Needs reply":"Antwort erforderlich","Closed":"Geschlossen","Open":"Offen","Select a customer":"Kunden auswählen","Reply to customer…":"Dem Kunden antworten…","Select a customer first":"Zuerst Kunden auswählen","Live support":"Live-Support","Online":"Online","Sending":"Wird gesendet","Send":"Senden","Live chat message":"Live-Chat-Nachricht","Multi-brand management":"Mehrmarkenverwaltung","New brand":"Neue Marke","Save brand profile":"Markenprofil speichern","Brand profiles":"Markenprofile","Edit":"Bearbeiten","Activate":"Aktivieren","ACTIVE":"AKTIV","INACTIVE":"INAKTIV","Create profile":"Profil erstellen","Refresh":"Aktualisieren"
+  },
+  pt: {
+    "Operations center":"Central de operações","Open admin navigation":"Abrir navegação administrativa","Close admin navigation":"Fechar navegação administrativa","Admin navigation":"Navegação administrativa","Operations admin":"Administrador de operações","Sign out":"Sair","Search":"Pesquisar","Notifications":"Notificações","Multi-branding":"Gestão de marcas","External transfer approvals":"Aprovações de transferências externas","Customer":"Cliente","Transfer mode":"Modo de transferência","Preferred stop code":"Código de bloqueio preferido","Save transfer mode":"Salvar modo","Generate code to send":"Gerar código para enviar","Regenerate code":"Gerar novo código","Required operation note":"Nota operacional obrigatória","Customer conversations":"Conversas de clientes","customers":"clientes","waiting":"aguardando","No messages yet":"Ainda não há mensagens","New":"Novo","Needs reply":"Precisa de resposta","Closed":"Fechado","Open":"Aberto","Select a customer":"Selecione um cliente","Reply to customer…":"Responder ao cliente…","Select a customer first":"Selecione um cliente primeiro","Live support":"Suporte ao vivo","Online":"Online","Sending":"Enviando","Send":"Enviar","Live chat message":"Mensagem de chat","Multi-brand management":"Gestão de múltiplas marcas","New brand":"Nova marca","Save brand profile":"Salvar perfil da marca","Brand profiles":"Perfis de marca","Edit":"Editar","Activate":"Ativar","ACTIVE":"ATIVO","INACTIVE":"INATIVO","Create profile":"Criar perfil","Refresh":"Atualizar"
+  },
+  ar: {
+    "Operations center":"مركز العمليات","Open admin navigation":"فتح قائمة الإدارة","Close admin navigation":"إغلاق قائمة الإدارة","Admin navigation":"قائمة الإدارة","Operations admin":"مسؤول العمليات","Sign out":"تسجيل الخروج","Search":"بحث","Notifications":"الإشعارات","Multi-branding":"إدارة العلامات التجارية","External transfer approvals":"موافقات التحويلات الخارجية","Customer":"العميل","Transfer mode":"وضع التحويل","Preferred stop code":"رمز الإيقاف المفضل","Save transfer mode":"حفظ الوضع","Generate code to send":"إنشاء رمز للإرسال","Regenerate code":"إعادة إنشاء الرمز","Required operation note":"ملاحظة تشغيلية مطلوبة","Customer conversations":"محادثات العملاء","customers":"عملاء","waiting":"بانتظار الرد","No messages yet":"لا توجد رسائل بعد","New":"جديد","Needs reply":"يحتاج إلى رد","Closed":"مغلق","Open":"مفتوح","Select a customer":"اختر عميلاً","Reply to customer…":"الرد على العميل…","Select a customer first":"اختر عميلاً أولاً","Live support":"الدعم المباشر","Online":"متصل","Sending":"جارٍ الإرسال","Send":"إرسال","Live chat message":"رسالة الدردشة","Multi-brand management":"إدارة العلامات المتعددة","New brand":"علامة جديدة","Save brand profile":"حفظ ملف العلامة","Brand profiles":"ملفات العلامات","Edit":"تعديل","Activate":"تفعيل","ACTIVE":"نشط","INACTIVE":"غير نشط","Create profile":"إنشاء ملف","Refresh":"تحديث"
+  },
+  zh: {
+    "Operations center":"运营中心","Open admin navigation":"打开管理导航","Close admin navigation":"关闭管理导航","Admin navigation":"管理导航","Operations admin":"运营管理员","Sign out":"退出登录","Search":"搜索","Notifications":"通知","Multi-branding":"多品牌管理","External transfer approvals":"外部转账审批","Customer":"客户","Transfer mode":"转账模式","Preferred stop code":"首选暂停代码","Save transfer mode":"保存模式","Generate code to send":"生成发送代码","Regenerate code":"重新生成代码","Required operation note":"必填操作说明","Customer conversations":"客户会话","customers":"位客户","waiting":"等待回复","No messages yet":"暂无消息","New":"新会话","Needs reply":"需要回复","Closed":"已关闭","Open":"已开启","Select a customer":"选择客户","Reply to customer…":"回复客户…","Select a customer first":"请先选择客户","Live support":"在线客服","Online":"在线","Sending":"正在发送","Send":"发送","Live chat message":"在线聊天消息","Multi-brand management":"多品牌管理","New brand":"新品牌","Save brand profile":"保存品牌资料","Brand profiles":"品牌资料","Edit":"编辑","Activate":"启用","ACTIVE":"启用","INACTIVE":"停用","Create profile":"创建资料","Refresh":"刷新"
+  }
+};
+
+for (const code of Object.keys(interfaceTranslations) as AppLocale[]) {
+  translations[code] = {...translations[code],...interfaceTranslations[code]};
+}
+
 function detectLocale(): AppLocale {
   if (typeof navigator === "undefined") return "en";
   for (const language of navigator.languages.length ? navigator.languages : [navigator.language]) {
@@ -79,6 +104,8 @@ export function useLanguage() { return useContext(LanguageContext); }
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [preference, setPreferenceState] = useState<LanguagePreference>("auto");
   const [detectedLocale, setDetectedLocale] = useState<AppLocale>("en");
+  const textSources=useRef(new WeakMap<Text,{source:string;rendered:string}>());
+  const attributeSources=useRef(new WeakMap<Element,Map<string,{source:string;rendered:string}>>());
   const locale = preference === "auto" ? detectedLocale : preference;
 
   useEffect(() => {
@@ -95,6 +122,51 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
   }, [locale]);
 
+  useEffect(()=>{
+    const dictionary=translations[locale]??{};
+    const skipped=(element:Element|null)=>Boolean(element?.closest(".language-switcher,script,style,code,pre,[data-no-translate]"));
+    const translateText=(node:Text)=>{
+      if(skipped(node.parentElement))return;
+      const current=node.nodeValue??"";
+      let record=textSources.current.get(node);
+      if(!record||current!==record.rendered){record={source:current,rendered:current};textSources.current.set(node,record);}
+      const trimmed=record.source.trim();
+      const translated=locale==="en"?trimmed:dictionary[trimmed];
+      const next=translated?record.source.replace(trimmed,translated):record.source;
+      record.rendered=next;
+      if(current!==next)node.nodeValue=next;
+    };
+    const translateAttributes=(element:Element)=>{
+      if(skipped(element))return;
+      let records=attributeSources.current.get(element);
+      if(!records){records=new Map();attributeSources.current.set(element,records);}
+      for(const attribute of ["placeholder","title","aria-label"]){
+        const current=element.getAttribute(attribute);
+        if(!current)continue;
+        let record=records.get(attribute);
+        if(!record||current!==record.rendered){record={source:current,rendered:current};records.set(attribute,record);}
+        const translated=locale==="en"?record.source:dictionary[record.source]??record.source;
+        record.rendered=translated;
+        if(current!==translated)element.setAttribute(attribute,translated);
+      }
+    };
+    const applyTranslations=(root:Node)=>{
+      if(root.nodeType===Node.TEXT_NODE)translateText(root as Text);
+      if(root.nodeType===Node.ELEMENT_NODE)translateAttributes(root as Element);
+      const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT);
+      let node=walker.nextNode();
+      while(node){if(node.nodeType===Node.TEXT_NODE)translateText(node as Text);else translateAttributes(node as Element);node=walker.nextNode();}
+    };
+    applyTranslations(document.body);
+    let frame=0;
+    const observer=new MutationObserver((mutations)=>{
+      window.cancelAnimationFrame(frame);
+      frame=window.requestAnimationFrame(()=>mutations.forEach((mutation)=>applyTranslations(mutation.target)));
+    });
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["placeholder","title","aria-label"]});
+    return()=>{observer.disconnect();window.cancelAnimationFrame(frame);};
+  },[locale]);
+
   function setPreference(next: LanguagePreference) {
     setPreferenceState(next);
     window.localStorage.setItem("northstar-language", next);
@@ -106,7 +178,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localeTag: localeTags[locale],
     preference,
     setPreference,
-    t: (text) => translations[locale]?.[text] ?? text,
+    t: (text) => {
+      const trimmed=text.trim();
+      const translated=translations[locale]?.[trimmed];
+      return translated?text.replace(trimmed,translated):text;
+    },
   }), [locale, preference]);
 
   return <LanguageContext.Provider value={value}>

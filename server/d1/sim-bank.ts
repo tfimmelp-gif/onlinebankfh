@@ -972,6 +972,33 @@ export async function getSimulationLiveChat(userId: string) {
   return { conversation, messages: messages.results };
 }
 
+export type SimLiveChatCustomerSummary = {
+  userId: string;
+  customerName: string;
+  email: string;
+  conversationId: string | null;
+  status: "NEW" | "OPEN" | "WAITING" | "CLOSED";
+  assignedTo: string | null;
+  updatedAt: string;
+  lastMessage: string | null;
+};
+
+export async function listSimulationLiveChatCustomers() {
+  await initializeSimulationBank();
+  const rows=await database().prepare(`SELECT d.user_id AS userId,
+    d.first_name||' '||d.last_name AS customerName,d.email,
+    c.id AS conversationId,COALESCE(c.status,'NEW') AS status,
+    c.assigned_to AS assignedTo,COALESCE(c.updated_at,d.updated_at) AS updatedAt,
+    (SELECT m.body FROM sim_live_chat_messages m WHERE m.conversation_id=c.id
+      ORDER BY m.created_at DESC,m.id DESC LIMIT 1) AS lastMessage
+    FROM sim_customer_directory d
+    LEFT JOIN sim_live_chat_conversations c ON c.user_id=d.user_id
+    ORDER BY CASE COALESCE(c.status,'NEW') WHEN 'WAITING' THEN 0 WHEN 'OPEN' THEN 1
+      WHEN 'NEW' THEN 2 ELSE 3 END,COALESCE(c.updated_at,d.updated_at) DESC,d.user_id`)
+    .all<SimLiveChatCustomerSummary>();
+  return rows.results;
+}
+
 export async function postSimulationLiveChatMessage(input: {
   userId: string;
   senderKind: "CUSTOMER" | "STAFF";

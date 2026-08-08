@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSessionToken } from "../../../../server/auth/admin-session";
 import { validateMutationRequest } from "../../../../server/security/request";
-import { getSimulationLiveChat, postSimulationLiveChatMessage } from "../../../../server/d1/sim-bank";
-
-const CUSTOMER_ID = "C-882104";
+import { getSimulationLiveChat, listSimulationLiveChatCustomers, postSimulationLiveChatMessage } from "../../../../server/d1/sim-bank";
 
 function cookieValue(request: Request) {
   const rawCookie = request.headers.get("cookie") ?? "";
@@ -19,7 +17,9 @@ async function authorized(request: Request) {
 export async function GET(request: Request) {
   if (!await authorized(request)) return NextResponse.json({ error: "STAFF_AUTH_REQUIRED" }, { status: 401 });
   try {
-    return NextResponse.json(await getSimulationLiveChat(CUSTOMER_ID), {
+    const userId=new URL(request.url).searchParams.get("userId")?.trim();
+    const result=userId?await getSimulationLiveChat(userId):{customers:await listSimulationLiveChatCustomers()};
+    return NextResponse.json(result, {
       headers: { "cache-control": "no-store" },
     });
   } catch (error) {
@@ -31,10 +31,11 @@ export async function POST(request: Request) {
   const guard=validateMutationRequest(request);
   if(guard)return NextResponse.json({error:guard.error},{status:guard.status});
   if (!await authorized(request)) return NextResponse.json({ error: "STAFF_AUTH_REQUIRED" }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { body?: string };
+  const body = await request.json().catch(() => ({})) as { userId?: string; body?: string };
+  if(!body.userId?.trim())return NextResponse.json({error:"CUSTOMER_REQUIRED"},{status:400});
   try {
     return NextResponse.json(await postSimulationLiveChatMessage({
-      userId: CUSTOMER_ID,
+      userId: body.userId.trim(),
       senderKind: "STAFF",
       senderName: "Sarah Okafor",
       body: body.body ?? "",

@@ -178,11 +178,32 @@ test("live support chat persists customer and staff messages", async () => {
   assert.match(service, /CREATE TABLE IF NOT EXISTS sim_live_chat_conversations/i);
   assert.match(service, /CREATE TABLE IF NOT EXISTS sim_live_chat_messages/i);
   assert.match(service, /postSimulationLiveChatMessage/i);
+  assert.match(service, /listSimulationLiveChatCustomers/i);
+  assert.match(service, /LEFT JOIN sim_live_chat_conversations/i);
   assert.match(customerApi, /verifyCustomerSessionToken/i);
   assert.match(adminApi, /verifyAdminSessionToken/i);
+  assert.match(adminApi, /searchParams\.get\("userId"\)/i);
+  assert.match(adminApi, /listSimulationLiveChatCustomers/i);
+  assert.doesNotMatch(adminApi, /const CUSTOMER_ID/i);
   assert.match(panel, /document\.visibilityState==="visible"[\s\S]*?10_000/i);
   assert.match(panel, /Secure support channel/i);
+  assert.match(panel, /support-customer-list/i);
+  assert.match(panel, /JSON\.stringify\(\{userId:selectedUserId,body:draft\}\)/i);
   assert.match(panel, /realm:\s*"customer"\s*\|\s*"admin"/i);
+});
+
+test("admin mobile navigation and interface translation cover operational screens", async () => {
+  const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/portal.css", import.meta.url), "utf8");
+  const language = await readFile(new URL("../components/LanguageProvider.tsx", import.meta.url), "utf8");
+  assert.match(shell, /mobileAdminNavOpen/i);
+  assert.match(shell, /mobile-admin-nav-drawer/i);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*?mobile-admin-nav-backdrop/i);
+  assert.match(css, /admin-support-inbox[\s\S]*?grid-template-columns/i);
+  assert.match(language, /interfaceTranslations/i);
+  assert.match(language, /MutationObserver/i);
+  assert.match(language, /External transfer approvals/i);
+  assert.match(language, /Customer conversations/i);
 });
 
 test("admin transaction management updates persistent balances", async () => {
@@ -260,6 +281,8 @@ test("external transfers persist pending instructions with visible confirmation"
   assert.match(dashboard, /controlError&&<div className="auth-error">/i);
   assert.doesNotMatch(dashboard, /const \[controlUserId,setControlUserId\] = useState\("C-882104"\)/i);
   assert.match(dashboard, /Generate code to send/i);
+  assert.match(dashboard, /Enter an operation note before generating the customer code/i);
+  assert.match(dashboard, /Compliance release code generated for the customer after operations review/i);
   assert.match(dashboard, /Create or update a stop code/i);
   assert.match(dashboard, /Generate customer code/i);
   assert.match(dashboard, /Copy for customer/i);
