@@ -846,10 +846,12 @@ function AdminTransferQueue() {
   const [error,setError] = useState("");
   const [submitting,setSubmitting] = useState(false);
   const [generatedCode,setGeneratedCode] = useState("");
-  const customerOptions = Array.from(new Map(
-    accounts.filter((account)=>account.userId!=="SYSTEM")
-      .map((account)=>[account.userId,{userId:account.userId,name:account.customerName}]),
-  ).values());
+  // The save API validates against sim_customer_directory, so the selector must
+  // use that same source instead of accounts that may be stale after an import.
+  const customerOptions = customers.map((customer)=>({
+    userId:customer.userId,
+    name:`${customer.firstName} ${customer.lastName}`.trim(),
+  }));
   const [controlUserId,setControlUserId] = useState<string>("");
   const initialControl = transferControls.find((control)=>control.userId===controlUserId);
   const [controlMode,setControlMode] = useState<"STANDARD_APPROVAL"|"COMPLIANCE_CODE">(initialControl?.externalMode ?? "STANDARD_APPROVAL");

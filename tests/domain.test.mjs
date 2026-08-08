@@ -253,6 +253,9 @@ test("external transfers persist pending instructions with visible confirmation"
   assert.match(dashboard, /Approve & settle/i);
   assert.match(dashboard, /Flag for review/i);
   assert.match(dashboard, /Mode 2 · Compliance-code hold/i);
+  assert.match(dashboard, /const customerOptions = customers\.map/i);
+  assert.match(dashboard, /controlError&&<div className="auth-error">/i);
+  assert.doesNotMatch(dashboard, /const \[controlUserId,setControlUserId\] = useState\("C-882104"\)/i);
   assert.match(dashboard, /Generate code to send/i);
   assert.match(dashboard, /Create or update a stop code/i);
   assert.match(dashboard, /Generate customer code/i);
