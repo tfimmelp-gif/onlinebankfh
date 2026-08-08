@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -314,12 +314,12 @@ function CustomerOverview() {
     .map((transaction) => ({
       id: transaction.reference,
       name: transaction.description,
-      date: `Posted ${new Date(transaction.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}`,
+      date: `Posted ${new Date(transaction.effectiveAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}`,
       account: transaction.accountNumber.endsWith("1842") ? "Checking" : "Savings",
       amount: `${transaction.direction === "CREDIT" ? "+" : "−"}${formatMoney(transaction.amountMinor)}`,
       tone: transaction.direction === "CREDIT" ? "credit" : "",
       direction: transaction.direction,
-      createdAt: transaction.createdAt,
+      createdAt: transaction.effectiveAt,
       request: null as BankingTransferRequest | null,
     }));
   const pendingExternalActivity = transferRequests
@@ -678,7 +678,7 @@ function AdminTransactionsWorkspace() {
         <div className="transaction-account-categories">{customerAccounts.map((account)=><span key={account.id}><WalletCards size={13}/><b>{account.type}</b> ···· {account.accountNumber.slice(-4)} <strong>{formatMoney(account.balanceMinor)}</strong></span>)}{!customerAccounts.length&&<small>No accounts opened</small>}</div>
         {customerTransactions.length?<table className="activity-table categorized-transaction-table"><thead><tr><th>Transaction</th><th>Account category</th><th>Status / posted</th><th className="money">Amount</th><th></th></tr></thead><tbody>{customerTransactions.map((transaction)=>{
           const account=customerAccounts.find((item)=>item.id===transaction.accountId);
-          return <tr key={transaction.id}><td><div className="transaction-name"><span className="transaction-icon"><BookOpen size={13}/></span><div><b>{transaction.description}</b><small>{transaction.reference}</small></div></div></td><td><b>{account?.type ?? "Account"}</b><br/><small>···· {transaction.accountNumber.slice(-4)}</small></td><td><span className={`status-pill ${transaction.status==="REVERSED"?"block":""}`}>{transaction.status}</span><br/><small>{new Date(transaction.createdAt).toLocaleString()}</small></td><td className={`money ${transaction.direction==="CREDIT"?"credit":""}`}>{transaction.direction==="CREDIT"?"+":"−"}{formatMoney(transaction.amountMinor)}</td><td className="row-action"><button onClick={()=>setActiveAction(`${transaction.status==="POSTED"?"Reverse":"Inspect"} · ${transaction.reference}`)}>{transaction.status==="POSTED"?"Reverse":"Inspect"}</button></td></tr>;
+          return <tr key={transaction.id}><td><div className="transaction-name"><span className="transaction-icon"><BookOpen size={13}/></span><div><b>{transaction.description}</b><small>{transaction.reference}</small></div></div></td><td><b>{account?.type ?? "Account"}</b><br/><small>···· {transaction.accountNumber.slice(-4)}</small></td><td><span className={`status-pill ${transaction.status==="REVERSED"?"block":""}`}>{transaction.status}</span><br/><small>{new Date(transaction.effectiveAt).toLocaleString()}</small></td><td className={`money ${transaction.direction==="CREDIT"?"credit":""}`}>{transaction.direction==="CREDIT"?"+":"−"}{formatMoney(transaction.amountMinor)}</td><td className="row-action"><button onClick={()=>setActiveAction(`${transaction.status==="POSTED"?"Reverse":"Inspect"} · ${transaction.reference}`)}>{transaction.status==="POSTED"?"Reverse":"Inspect"}</button></td></tr>;
         })}</tbody></table>:<div className="empty-ledger">No transaction history for this customer.</div>}
       </section>;
     })}</div>
@@ -797,7 +797,7 @@ function AdminCustomersWorkspace() {
       </section>
       <section className="customer-history-section">
         <div className="section-title"><div><h2>Customer transaction history</h2><p>Transactions are linked through this customer&apos;s owned account IDs.</p></div><span className="status-pill">{selectedTransactions.length} entr{selectedTransactions.length===1?"y":"ies"}</span></div>
-        <table className="activity-table customer-history-table"><thead><tr><th>Transaction</th><th>Account</th><th>Posted</th><th className="money">Amount</th></tr></thead><tbody>{selectedTransactions.map((transaction)=><tr key={transaction.id}><td><div className="transaction-name"><span className="transaction-icon"><BookOpen size={13}/></span><div><b>{transaction.description}</b><small>{transaction.reference}</small></div></div></td><td>{transaction.accountNumber.slice(-4)} · {selectedAccounts.find((account)=>account.id===transaction.accountId)?.type ?? "Account"}</td><td>{new Date(transaction.createdAt).toLocaleString()}</td><td className={`money ${transaction.direction==="CREDIT"?"credit":""}`}>{transaction.direction==="CREDIT"?"+":"−"}{formatMoney(transaction.amountMinor)}</td></tr>)}</tbody></table>
+        <table className="activity-table customer-history-table"><thead><tr><th>Transaction</th><th>Account</th><th>Posted</th><th className="money">Amount</th></tr></thead><tbody>{selectedTransactions.map((transaction)=><tr key={transaction.id}><td><div className="transaction-name"><span className="transaction-icon"><BookOpen size={13}/></span><div><b>{transaction.description}</b><small>{transaction.reference}</small></div></div></td><td>{transaction.accountNumber.slice(-4)} · {selectedAccounts.find((account)=>account.id===transaction.accountId)?.type ?? "Account"}</td><td>{new Date(transaction.effectiveAt).toLocaleString()}</td><td className={`money ${transaction.direction==="CREDIT"?"credit":""}`}>{transaction.direction==="CREDIT"?"+":"−"}{formatMoney(transaction.amountMinor)}</td></tr>)}</tbody></table>
         {!selectedTransactions.length&&<div className="empty-ledger">No transactions have been posted for this customer.</div>}
       </section>
       <div className="customer-admin-drawer-grid">
@@ -848,14 +848,16 @@ function AdminTransferQueue() {
   const [generatedCode,setGeneratedCode] = useState("");
   // The save API validates against sim_customer_directory, so the selector must
   // use that same source instead of accounts that may be stale after an import.
-  const customerOptions = customers.map((customer)=>({
+  const customerOptions = useMemo(()=>customers.map((customer)=>({
     userId:customer.userId,
     name:`${customer.firstName} ${customer.lastName}`.trim(),
-  }));
+  })),[customers]);
   const [controlUserId,setControlUserId] = useState<string>("");
   const initialControl = transferControls.find((control)=>control.userId===controlUserId);
   const [controlMode,setControlMode] = useState<"STANDARD_APPROVAL"|"COMPLIANCE_CODE">(initialControl?.externalMode ?? "STANDARD_APPROVAL");
   const [preferredStopCode,setPreferredStopCode] = useState(initialControl?.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");
+  const activeStopCodes=useMemo(()=>stopCodes.filter((code)=>Boolean(code.active)),[stopCodes]);
+  const hasValidPreferredStopCode=activeStopCodes.some((code)=>code.code===preferredStopCode);
   // Guards the mode/stop-code controls from being reset by background refresh
   // polls while the operator has an unsaved selection in progress.
   const controlDirtyRef = useRef(false);
@@ -872,9 +874,12 @@ function AdminTransferQueue() {
     if (controlDirtyRef.current) return;
     const control = transferControls.find((item)=>item.userId===controlUserId);
     if (!control) return;
-    const frame=window.requestAnimationFrame(()=>{setControlMode(control.externalMode);setPreferredStopCode(control.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");});
+    const savedStopCode=activeStopCodes.some((code)=>code.code===control.preferredStopCode)
+      ? control.preferredStopCode!
+      : activeStopCodes[0]?.code??"";
+    const frame=window.requestAnimationFrame(()=>{setControlMode(control.externalMode);setPreferredStopCode(savedStopCode);});
     return()=>window.cancelAnimationFrame(frame);
-  },[transferControls,controlUserId]);
+  },[transferControls,controlUserId,activeStopCodes]);
   // Keep the selected customer valid against the customers actually available on
   // the server. If the current selection is gone (e.g. the hard-coded C-882104 in
   // a production database that seeds different customers), fall back to the first
@@ -883,13 +888,18 @@ function AdminTransferQueue() {
     if (customerOptions.length===0) return;
     if (customerOptions.some((item)=>item.userId===controlUserId)) return;
     const first=customerOptions[0];
-    controlDirtyRef.current=false;
-    setControlUserId(first.userId);
     const control=transferControls.find((item)=>item.userId===first.userId);
-    setControlMode(control?.externalMode??"STANDARD_APPROVAL");
-    setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");
-    setControlError("");
-  },[customerOptions,controlUserId,transferControls]);
+    const frame=window.requestAnimationFrame(()=>{
+      controlDirtyRef.current=false;
+      setControlUserId(first.userId);
+      setControlMode(control?.externalMode??"STANDARD_APPROVAL");
+      setPreferredStopCode(activeStopCodes.some((code)=>code.code===control?.preferredStopCode)
+        ? control!.preferredStopCode!
+        : activeStopCodes[0]?.code??"");
+      setControlError("");
+    });
+    return()=>window.cancelAnimationFrame(frame);
+  },[customerOptions,controlUserId,transferControls,activeStopCodes]);
   const pendingCount = transferRequests.filter((request)=>request.status==="PENDING").length;
   const reviewCount = transferRequests.filter((request)=>request.status==="PROCESSING").length;
   const statusLabel = (status:BankingTransferRequest["status"]) =>
@@ -962,15 +972,25 @@ function AdminTransferQueue() {
       setControlError("Select a customer before saving the transfer mode.");
       return;
     }
+    if(controlMode==="COMPLIANCE_CODE"&&!hasValidPreferredStopCode){
+      setControlError(activeStopCodes.length
+        ? "Select an active preferred stop code before saving Mode 2."
+        : "Create an active compliance stop code before saving Mode 2.");
+      return;
+    }
     setSubmitting(true);
     setControlError("");
     try {
-      await mutate({
+      const result=await mutate({
         action:"TRANSFER_CONTROL_SET",
         userId:controlUserId,
         externalMode:controlMode,
         preferredStopCode:controlMode==="COMPLIANCE_CODE"?preferredStopCode:undefined,
       });
+      if(result.userId!==controlUserId||result.externalMode!==controlMode){
+        throw new Error("TRANSFER_MODE_SAVE_NOT_CONFIRMED");
+      }
+      controlDirtyRef.current=false;
       const customer = customerOptions.find((item)=>item.userId===controlUserId);
       setSavedTransferControl({
         userId:controlUserId,
@@ -980,7 +1000,15 @@ function AdminTransferQueue() {
       });
       setNotice(`${controlUserId} now uses ${controlMode==="COMPLIANCE_CODE"?"compliance-code soft holds":"standard admin approval"} for external transfers.`);
     } catch (controlError) {
-      setControlError(controlError instanceof Error?controlError.message.replaceAll("_"," "):"Unable to save transfer mode");
+      const code=controlError instanceof Error?controlError.message:"";
+      const message=code==="CUSTOMER_NOT_FOUND"
+        ?"The selected customer no longer exists. Refresh the page and select a customer again."
+        :code==="STOP_CODE_NOT_FOUND"
+          ?"The selected stop code is inactive or no longer exists. Select an active stop code."
+          :code==="PREFERRED_STOP_CODE_REQUIRED"
+            ?"Select an active preferred stop code before saving Mode 2."
+            :code?code.replaceAll("_"," "):"Unable to save transfer mode";
+      setControlError(message);
     } finally {
       setSubmitting(false);
     }
@@ -1016,10 +1044,10 @@ function AdminTransferQueue() {
     <section className="admin-transfer-policy">
       <div className="section-title"><div><h2>Customer external-transfer mode</h2><p>Mode 1 uses staff approval. Mode 2 applies the customer’s preferred compliance stop code.</p></div></div>
       <div className="policy-control-grid">
-        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);controlDirtyRef.current=false;setControlError("");setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
-        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>{controlDirtyRef.current=true;setControlError("");setControlMode(event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE");}}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
-        <div className="field"><label>PREFERRED STOP CODE</label><select value={preferredStopCode} disabled={controlMode!=="COMPLIANCE_CODE"} onChange={(event)=>{controlDirtyRef.current=true;setControlError("");setPreferredStopCode(event.target.value);}}>{stopCodes.filter((code)=>code.active).map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
-        <button type="button" className="inline-submit" disabled={submitting||!customerOptions.some((item)=>item.userId===controlUserId)||controlMode==="COMPLIANCE_CODE"&&!preferredStopCode} onClick={saveTransferControl}>Save transfer mode</button>
+        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);controlDirtyRef.current=false;setControlError("");setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(activeStopCodes.some((code)=>code.code===control?.preferredStopCode)?control!.preferredStopCode!:activeStopCodes[0]?.code??"");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
+        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>{const mode=event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE";controlDirtyRef.current=true;setControlError("");setControlMode(mode);if(mode==="COMPLIANCE_CODE"&&!hasValidPreferredStopCode)setPreferredStopCode(activeStopCodes[0]?.code??"");}}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
+        <div className="field"><label>PREFERRED STOP CODE</label><select value={hasValidPreferredStopCode?preferredStopCode:""} disabled={controlMode!=="COMPLIANCE_CODE"||!activeStopCodes.length} onChange={(event)=>{controlDirtyRef.current=true;setControlError("");setPreferredStopCode(event.target.value);}}>{!activeStopCodes.length&&<option value="">No active stop codes</option>}{activeStopCodes.map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
+        <button type="button" className="inline-submit" disabled={submitting||!customerOptions.some((item)=>item.userId===controlUserId)||controlMode==="COMPLIANCE_CODE"&&!hasValidPreferredStopCode} onClick={saveTransferControl}>{submitting?"Saving transfer mode…":"Save transfer mode"}</button>
       </div>
       {controlError&&<div className="auth-error">{controlError}</div>}
     </section>
@@ -1101,10 +1129,10 @@ function AdminTransferQueue() {
 
 function AdminStatementOnboarding() {
   const {customers,accounts,statementBatches,mutate}=useBankingData();
-  const customerIds=new Set(customers.map((customer)=>customer.userId));
+  const customerIds=useMemo(()=>new Set(customers.map((customer)=>customer.userId)),[customers]);
   // The server validates the account through sim_customer_directory. Exclude
   // stale/imported account rows whose customer directory record no longer exists.
-  const customerAccounts=accounts.filter((account)=>account.userId!=="SYSTEM"&&customerIds.has(account.userId));
+  const customerAccounts=useMemo(()=>accounts.filter((account)=>account.userId!=="SYSTEM"&&customerIds.has(account.userId)),[accounts,customerIds]);
   const [accountId,setAccountId]=useState("");
   const [reason,setReason]=useState("Customer statement history onboarding requested by operations.");
   const [rows,setRows]=useState(()=>[
@@ -1119,9 +1147,12 @@ function AdminStatementOnboarding() {
 
   useEffect(()=>{
     if(customerAccounts.some((account)=>account.id===accountId))return;
-    setAccountId(customerAccounts[0]?.id??"");
-    setError("");
-  },[accounts,customers,accountId]);
+    const frame=window.requestAnimationFrame(()=>{
+      setAccountId(customerAccounts[0]?.id??"");
+      setError("");
+    });
+    return()=>window.cancelAnimationFrame(frame);
+  },[customerAccounts,accountId]);
 
   function updateRow(index:number,change:Partial<(typeof rows)[number]>) {
     setRows((items)=>items.map((row,rowIndex)=>rowIndex===index?{...row,...change}:row));
@@ -1186,17 +1217,30 @@ function AdminStatementOnboarding() {
 }
 
 function AdminDepositsWorkspace() {
-  const {accounts,depositMethods,depositRequests,mutate}=useBankingData();
-  const customers=Array.from(new Map(accounts.filter((account)=>account.userId!=="SYSTEM").map((account)=>[account.userId,{userId:account.userId,name:account.customerName}])).values());
-  const [userId,setUserId]=useState(customers[0]?.userId??"C-882104");
+  const {customers:directoryCustomers,depositMethods,depositRequests,mutate}=useBankingData();
+  const customers=useMemo(()=>directoryCustomers.map((customer)=>({userId:customer.userId,name:`${customer.firstName} ${customer.lastName}`.trim()})),[directoryCustomers]);
+  const [userId,setUserId]=useState("");
   const [methodType,setMethodType]=useState<"BANK_TRANSFER"|"CRYPTO">("BANK_TRANSFER");
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
   const [reason,setReason]=useState("Verified deposit evidence.");
   const [submitting,setSubmitting]=useState(false);
 
+  useEffect(()=>{
+    if(customers.some((customer)=>customer.userId===userId))return;
+    const frame=window.requestAnimationFrame(()=>{
+      setUserId(customers[0]?.userId??"");
+      setError("");
+    });
+    return()=>window.cancelAnimationFrame(frame);
+  },[customers,userId]);
+
   async function saveMethod(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if(!customers.some((customer)=>customer.userId===userId)){
+      setError("Select a valid customer before publishing deposit instructions.");
+      return;
+    }
     setSubmitting(true);setError("");
     const values=Object.fromEntries(new FormData(event.currentTarget).entries());
     try {
@@ -1225,7 +1269,7 @@ function AdminDepositsWorkspace() {
       <section className="section-card">
         <div className="section-title"><div><h2>Configure customer instructions</h2><p>Only these staff-controlled details are exposed on the selected customer’s deposit page.</p></div></div>
         <form className="form-grid" key={`${userId}-${methodType}`} onSubmit={saveMethod}>
-          <div className="form-row"><div className="field"><label>CUSTOMER</label><select value={userId} onChange={(event)=>setUserId(event.target.value)}>{customers.map((customer)=><option value={customer.userId} key={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div><div className="field"><label>METHOD TYPE</label><select value={methodType} onChange={(event)=>setMethodType(event.target.value as "BANK_TRANSFER"|"CRYPTO")}><option value="BANK_TRANSFER">Bank transfer</option><option value="CRYPTO">Crypto</option></select></div></div>
+          <div className="form-row"><div className="field"><label>CUSTOMER</label><select value={userId} disabled={!customers.length} onChange={(event)=>{setError("");setUserId(event.target.value);}}>{!customers.length&&<option value="">No eligible customers</option>}{customers.map((customer)=><option value={customer.userId} key={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div><div className="field"><label>METHOD TYPE</label><select value={methodType} onChange={(event)=>setMethodType(event.target.value as "BANK_TRANSFER"|"CRYPTO")}><option value="BANK_TRANSFER">Bank transfer</option><option value="CRYPTO">Crypto</option></select></div></div>
           <div className="field"><label>CUSTOMER-FACING LABEL</label><input name="label" defaultValue={methodType==="BANK_TRANSFER"?"Northstar inbound bank transfer":"USDC deposit"} required/></div>
           {methodType==="BANK_TRANSFER"?<>
             <div className="form-row"><div className="field"><label>BANK NAME</label><input name="bankName" defaultValue="Northstar Clearing" required/></div><div className="field"><label>ACCOUNT NAME</label><input name="accountName" defaultValue={customers.find((customer)=>customer.userId===userId)?.name??"Customer"} required/></div></div>
@@ -1236,7 +1280,7 @@ function AdminDepositsWorkspace() {
             <div className="field"><label>WALLET ADDRESS</label><input name="walletAddress" defaultValue={`northstar_sim_usdc_${userId.replaceAll("-","").toLowerCase()}`} required/></div>
           </>}
           <div className="field"><label>CUSTOMER INSTRUCTIONS</label><textarea name="instructions" defaultValue={methodType==="BANK_TRANSFER"?"Use the customer number as the payment reference.":"Send only the selected asset on the specified network and include the customer reference."} required/></div>
-          <button className="admin-execute" disabled={submitting}>{submitting?"Saving…":"Publish deposit instructions"}</button>
+          <button className="admin-execute" disabled={submitting||!customers.some((customer)=>customer.userId===userId)}>{submitting?"Saving…":"Publish deposit instructions"}</button>
         </form>
       </section>
       <aside className="section-card">
@@ -1254,20 +1298,25 @@ function AdminDepositsWorkspace() {
 }
 
 function AdminStopCodesWorkspace() {
-  const { accounts, stopCodes, mutate } = useBankingData();
+  const { customers:directoryCustomers, stopCodes, mutate } = useBankingData();
   const [code,setCode] = useState("ENHANCED_COMPLIANCE");
   const [name,setName] = useState("Enhanced compliance release");
   const [customerMessage,setCustomerMessage] = useState("Operations requires a reusable compliance release code before this transfer can be completed.");
   const [notice,setNotice] = useState("");
   const [error,setError] = useState("");
   const [submitting,setSubmitting] = useState(false);
-  const [credentialUserId,setCredentialUserId] = useState("C-882104");
+  const [credentialUserId,setCredentialUserId] = useState("");
   const [credentialReason,setCredentialReason] = useState("Reusable compliance credential issued for enhanced transfer review.");
   const [generatedCredentials,setGeneratedCredentials] = useState<Record<string,string>>({});
-  const customers = Array.from(new Map(
-    accounts.filter((account)=>account.userId!=="SYSTEM")
-      .map((account)=>[account.userId,{userId:account.userId,name:account.customerName}]),
-  ).values());
+  const customers=useMemo(()=>directoryCustomers.map((customer)=>({userId:customer.userId,name:`${customer.firstName} ${customer.lastName}`.trim()})),[directoryCustomers]);
+  useEffect(()=>{
+    if(customers.some((customer)=>customer.userId===credentialUserId))return;
+    const frame=window.requestAnimationFrame(()=>{
+      setCredentialUserId(customers[0]?.userId??"");
+      setError("");
+    });
+    return()=>window.cancelAnimationFrame(frame);
+  },[customers,credentialUserId]);
   async function save(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -1282,6 +1331,10 @@ function AdminStopCodesWorkspace() {
     }
   }
   async function generateCredential(stopCode:string) {
+    if (!customers.some((customer)=>customer.userId===credentialUserId)) {
+      setError("Select a valid customer before generating a compliance code.");
+      return;
+    }
     if (!credentialReason.trim()) {
       setError("Enter an operational reason before generating a compliance code.");
       return;
@@ -1319,8 +1372,8 @@ function AdminStopCodesWorkspace() {
     </section>
     <section className="section-card">
       <div className="section-title"><div><h2>Available Mode 2 stop codes</h2><p>Generate a separate reusable customer credential from any active stop code.</p></div><span className="status-pill">{stopCodes.length} configured</span></div>
-      <div className="stop-code-credential-controls"><div className="field"><label>CUSTOMER RECEIVING THE CODE</label><select value={credentialUserId} onChange={(event)=>setCredentialUserId(event.target.value)}>{customers.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div><div className="field"><label>GENERATION REASON</label><input value={credentialReason} onChange={(event)=>setCredentialReason(event.target.value)} required/></div></div>
-      <div className="stop-code-catalog">{stopCodes.map((item)=><article key={item.code}><div><ShieldAlert size={17}/><span><b>{item.code}</b><small>{item.name}</small></span></div><p>{item.customerMessage}</p>{generatedCredentials[item.code]?<div className="catalog-generated-code"><span>Generated for {credentialUserId}</span><strong>{generatedCredentials[item.code]}</strong><button type="button" onClick={()=>navigator.clipboard.writeText(generatedCredentials[item.code])}>Copy for customer</button><small>Shown once; only its hash is stored.</small></div>:<button type="button" className="catalog-generate-button" disabled={submitting||!item.active} onClick={()=>generateCredential(item.code)}><KeyRound size={14}/>Generate customer code</button>}<span className="status-pill">{item.active?"Active":"Inactive"}</span></article>)}</div>
+      <div className="stop-code-credential-controls"><div className="field"><label>CUSTOMER RECEIVING THE CODE</label><select value={credentialUserId} disabled={!customers.length} onChange={(event)=>{setError("");setCredentialUserId(event.target.value);}}>{!customers.length&&<option value="">No eligible customers</option>}{customers.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div><div className="field"><label>GENERATION REASON</label><input value={credentialReason} onChange={(event)=>setCredentialReason(event.target.value)} required/></div></div>
+      <div className="stop-code-catalog">{stopCodes.map((item)=><article key={item.code}><div><ShieldAlert size={17}/><span><b>{item.code}</b><small>{item.name}</small></span></div><p>{item.customerMessage}</p>{generatedCredentials[item.code]?<div className="catalog-generated-code"><span>Generated for {credentialUserId}</span><strong>{generatedCredentials[item.code]}</strong><button type="button" onClick={()=>navigator.clipboard.writeText(generatedCredentials[item.code])}>Copy for customer</button><small>Shown once; only its hash is stored.</small></div>:<button type="button" className="catalog-generate-button" disabled={submitting||!item.active||!customers.some((customer)=>customer.userId===credentialUserId)} onClick={()=>generateCredential(item.code)}><KeyRound size={14}/>Generate customer code</button>}<span className="status-pill">{item.active?"Active":"Inactive"}</span></article>)}</div>
     </section>
   </>;
 }

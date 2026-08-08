@@ -804,6 +804,12 @@ async function initializeSimulationBankOnce() {
       .bind("Northstar inbound bank transfer", "Northstar Clearing", "Use your customer number as the payment reference."),
     db.prepare("UPDATE sim_customer_deposit_methods SET label = ?, instructions = ? WHERE id = 'DEP-CRYPTO-882104'")
       .bind("USDC deposit", "Send USDC on the selected network and include your customer reference."),
+    // Historical onboarding entries represent transactions posted on their
+    // selected effective date. Repair older imports that used the import time as
+    // created_at so every activity view shows the operator-selected date.
+    db.prepare(`UPDATE sim_transactions SET created_at = effective_at
+      WHERE id IN (SELECT transaction_id FROM sim_statement_onboarding_entries)
+        AND created_at <> effective_at`),
   ];
   const demoMarkers = ["C-882104", "C-882088", "C-881972", "CHAT-", "DEP-BANK-", "DEP-CRYPTO-", "BEN-MAYA-", "BEN-ECUR-"];
   await db.batch(seedDemoData ? seedStatements : seedStatements.filter((statement) => {
@@ -2235,7 +2241,7 @@ export async function onboardSimulationStatement(command: {
          effective_at, created_at, status, correction_of)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'POSTED', NULL)`)
         .bind(transactionId, reference, command.accountId, entry.direction,
-          entry.amountMinor, entry.description, entry.effectiveAt, createdAt),
+          entry.amountMinor, entry.description, entry.effectiveAt, entry.effectiveAt),
       db.prepare(`INSERT INTO sim_statement_onboarding_entries
         (batch_id, transaction_id, row_index) VALUES (?, ?, ?)`)
         .bind(batchId, transactionId, index),

@@ -253,7 +253,10 @@ test("external transfers persist pending instructions with visible confirmation"
   assert.match(dashboard, /Approve & settle/i);
   assert.match(dashboard, /Flag for review/i);
   assert.match(dashboard, /Mode 2 · Compliance-code hold/i);
-  assert.match(dashboard, /const customerOptions = customers\.map/i);
+  assert.match(dashboard, /const customerOptions = useMemo\(\(\)=>customers\.map/i);
+  assert.match(dashboard, /hasValidPreferredStopCode/i);
+  assert.match(dashboard, /No active stop codes/i);
+  assert.match(dashboard, /TRANSFER_MODE_SAVE_NOT_CONFIRMED/i);
   assert.match(dashboard, /controlError&&<div className="auth-error">/i);
   assert.doesNotMatch(dashboard, /const \[controlUserId,setControlUserId\] = useState\("C-882104"\)/i);
   assert.match(dashboard, /Generate code to send/i);
@@ -302,9 +305,12 @@ test("admin can atomically onboard historical statement activity", async () => {
   assert.match(service, /onboardSimulationStatement/i);
   assert.match(service, /STATEMENT_ENTRY_COUNT_INVALID/i);
   assert.match(service, /await db\.batch\(statements\)/i);
+  assert.match(service, /entry\.effectiveAt, entry\.effectiveAt/i);
+  assert.match(service, /UPDATE sim_transactions SET created_at = effective_at[\s\S]*sim_statement_onboarding_entries/i);
   assert.match(adminApi, /STATEMENT_ONBOARD/i);
   assert.match(shell, /Automatic statement onboarding/i);
   assert.match(shell, /Atomic statement injection/i);
+  assert.match(shell, /new Date\(transaction\.effectiveAt\)\.toLocaleString/i);
   assert.match(shell, /customerIds\.has\(account\.userId\)/i);
   assert.match(shell, /Select an active customer account before importing transactions/i);
   assert.match(shell, /No eligible customer accounts/i);
@@ -330,6 +336,10 @@ test("customer deposits use admin-configured bank and crypto instructions", asyn
   assert.match(workspace, /Admin-configured instructions/i);
   assert.match(workspace, /Submit deposit for review/i);
   assert.match(shell, /Publish deposit instructions/i);
+  assert.match(shell, /customers:directoryCustomers,depositMethods,depositRequests,mutate/i);
+  assert.match(shell, /Select a valid customer before publishing deposit instructions/i);
+  assert.match(shell, /customers:directoryCustomers, stopCodes, mutate/i);
+  assert.doesNotMatch(shell, /useState\("C-882104"\)/i);
   assert.match(shell, /approved and credited to the customer ledger/i);
 });
 
