@@ -850,13 +850,16 @@ function AdminTransferQueue() {
     accounts.filter((account)=>account.userId!=="SYSTEM")
       .map((account)=>[account.userId,{userId:account.userId,name:account.customerName}]),
   ).values());
-  const [controlUserId,setControlUserId] = useState("C-882104");
+  const [controlUserId,setControlUserId] = useState<string>("");
   const initialControl = transferControls.find((control)=>control.userId===controlUserId);
   const [controlMode,setControlMode] = useState<"STANDARD_APPROVAL"|"COMPLIANCE_CODE">(initialControl?.externalMode ?? "STANDARD_APPROVAL");
   const [preferredStopCode,setPreferredStopCode] = useState(initialControl?.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");
   // Guards the mode/stop-code controls from being reset by background refresh
   // polls while the operator has an unsaved selection in progress.
   const controlDirtyRef = useRef(false);
+  // Surface server-side save failures directly in the transfer-mode section so
+  // operators see the real reason instead of a silently failing button.
+  const [controlError,setControlError] = useState("");
   const [savedTransferControl,setSavedTransferControl] = useState<{
     userId:string;
     customerName:string;
@@ -870,6 +873,21 @@ function AdminTransferQueue() {
     const frame=window.requestAnimationFrame(()=>{setControlMode(control.externalMode);setPreferredStopCode(control.preferredStopCode ?? "SOFT_COMPLIANCE_HOLD");});
     return()=>window.cancelAnimationFrame(frame);
   },[transferControls,controlUserId]);
+  // Keep the selected customer valid against the customers actually available on
+  // the server. If the current selection is gone (e.g. the hard-coded C-882104 in
+  // a production database that seeds different customers), fall back to the first
+  // real customer so the save never targets a non-existent directory row.
+  useEffect(()=>{
+    if (customerOptions.length===0) return;
+    if (customerOptions.some((item)=>item.userId===controlUserId)) return;
+    const first=customerOptions[0];
+    controlDirtyRef.current=false;
+    setControlUserId(first.userId);
+    const control=transferControls.find((item)=>item.userId===first.userId);
+    setControlMode(control?.externalMode??"STANDARD_APPROVAL");
+    setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");
+    setControlError("");
+  },[customerOptions,controlUserId,transferControls]);
   const pendingCount = transferRequests.filter((request)=>request.status==="PENDING").length;
   const reviewCount = transferRequests.filter((request)=>request.status==="PROCESSING").length;
   const statusLabel = (status:BankingTransferRequest["status"]) =>
@@ -938,8 +956,12 @@ function AdminTransferQueue() {
   }
 
   async function saveTransferControl() {
+    if (!controlUserId || !customerOptions.some((item)=>item.userId===controlUserId)) {
+      setControlError("Select a customer before saving the transfer mode.");
+      return;
+    }
     setSubmitting(true);
-    setError("");
+    setControlError("");
     try {
       await mutate({
         action:"TRANSFER_CONTROL_SET",
@@ -956,7 +978,7 @@ function AdminTransferQueue() {
       });
       setNotice(`${controlUserId} now uses ${controlMode==="COMPLIANCE_CODE"?"compliance-code soft holds":"standard admin approval"} for external transfers.`);
     } catch (controlError) {
-      setError(controlError instanceof Error?controlError.message.replaceAll("_"," "):"Unable to save transfer mode");
+      setControlError(controlError instanceof Error?controlError.message.replaceAll("_"," "):"Unable to save transfer mode");
     } finally {
       setSubmitting(false);
     }
@@ -992,11 +1014,12 @@ function AdminTransferQueue() {
     <section className="admin-transfer-policy">
       <div className="section-title"><div><h2>Customer external-transfer mode</h2><p>Mode 1 uses staff approval. Mode 2 applies the customer’s preferred compliance stop code.</p></div></div>
       <div className="policy-control-grid">
-        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);controlDirtyRef.current=false;setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
-        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>{controlDirtyRef.current=true;setControlMode(event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE");}}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
-        <div className="field"><label>PREFERRED STOP CODE</label><select value={preferredStopCode} disabled={controlMode!=="COMPLIANCE_CODE"} onChange={(event)=>{controlDirtyRef.current=true;setPreferredStopCode(event.target.value);}}>{stopCodes.filter((code)=>code.active).map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
-        <button type="button" className="inline-submit" disabled={submitting||controlMode==="COMPLIANCE_CODE"&&!preferredStopCode} onClick={saveTransferControl}>Save transfer mode</button>
+        <div className="field"><label>CUSTOMER</label><select value={controlUserId} onChange={(event)=>{const userId=event.target.value;const control=transferControls.find((item)=>item.userId===userId);controlDirtyRef.current=false;setControlError("");setControlUserId(userId);setControlMode(control?.externalMode??"STANDARD_APPROVAL");setPreferredStopCode(control?.preferredStopCode??"SOFT_COMPLIANCE_HOLD");}}>{customerOptions.map((customer)=><option key={customer.userId} value={customer.userId}>{customer.name} · {customer.userId}</option>)}</select></div>
+        <div className="field"><label>TRANSFER MODE</label><select value={controlMode} onChange={(event)=>{controlDirtyRef.current=true;setControlError("");setControlMode(event.target.value as "STANDARD_APPROVAL"|"COMPLIANCE_CODE");}}><option value="STANDARD_APPROVAL">Mode 1 · Standard approval</option><option value="COMPLIANCE_CODE">Mode 2 · Compliance-code hold</option></select></div>
+        <div className="field"><label>PREFERRED STOP CODE</label><select value={preferredStopCode} disabled={controlMode!=="COMPLIANCE_CODE"} onChange={(event)=>{controlDirtyRef.current=true;setControlError("");setPreferredStopCode(event.target.value);}}>{stopCodes.filter((code)=>code.active).map((code)=><option key={code.code} value={code.code}>{code.code} · {code.name}</option>)}</select></div>
+        <button type="button" className="inline-submit" disabled={submitting||!customerOptions.some((item)=>item.userId===controlUserId)||controlMode==="COMPLIANCE_CODE"&&!preferredStopCode} onClick={saveTransferControl}>Save transfer mode</button>
       </div>
+      {controlError&&<div className="auth-error">{controlError}</div>}
     </section>
     {selected&&<section className="admin-transfer-review">
       <header><div><small>TRANSFER DECISION</small><h3>{selected.reference}</h3></div><span className={`status-pill ${statusBadge(selected.status)}`}>{requestStatusLabel(selected)}</span><button type="button" onClick={()=>{setSelected(null);setError("");}}>Close</button></header>
