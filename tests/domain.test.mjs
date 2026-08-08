@@ -305,6 +305,9 @@ test("admin can atomically onboard historical statement activity", async () => {
   assert.match(adminApi, /STATEMENT_ONBOARD/i);
   assert.match(shell, /Automatic statement onboarding/i);
   assert.match(shell, /Atomic statement injection/i);
+  assert.match(shell, /customerIds\.has\(account\.userId\)/i);
+  assert.match(shell, /Select an active customer account before importing transactions/i);
+  assert.match(shell, /No eligible customer accounts/i);
 });
 
 test("admin banking operations validate customers through the customer directory", async () => {

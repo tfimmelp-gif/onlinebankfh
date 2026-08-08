@@ -1100,9 +1100,12 @@ function AdminTransferQueue() {
 }
 
 function AdminStatementOnboarding() {
-  const {accounts,statementBatches,mutate}=useBankingData();
-  const customerAccounts=accounts.filter((account)=>account.userId!=="SYSTEM");
-  const [accountId,setAccountId]=useState(customerAccounts[0]?.id??"");
+  const {customers,accounts,statementBatches,mutate}=useBankingData();
+  const customerIds=new Set(customers.map((customer)=>customer.userId));
+  // The server validates the account through sim_customer_directory. Exclude
+  // stale/imported account rows whose customer directory record no longer exists.
+  const customerAccounts=accounts.filter((account)=>account.userId!=="SYSTEM"&&customerIds.has(account.userId));
+  const [accountId,setAccountId]=useState("");
   const [reason,setReason]=useState("Customer statement history onboarding requested by operations.");
   const [rows,setRows]=useState(()=>[
     {direction:"CREDIT" as const,amount:"4850.00",description:"Historical payroll deposit",effectiveAt:localDateTimeDaysAgo(90)},
@@ -1114,12 +1117,22 @@ function AdminStatementOnboarding() {
   const [submitting,setSubmitting]=useState(false);
   const netMinor=rows.reduce((total,row)=>total+(row.direction==="CREDIT"?1:-1)*Math.round(Number(row.amount||0)*100),0);
 
+  useEffect(()=>{
+    if(customerAccounts.some((account)=>account.id===accountId))return;
+    setAccountId(customerAccounts[0]?.id??"");
+    setError("");
+  },[accounts,customers,accountId]);
+
   function updateRow(index:number,change:Partial<(typeof rows)[number]>) {
     setRows((items)=>items.map((row,rowIndex)=>rowIndex===index?{...row,...change}:row));
   }
 
   async function submit(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if(!customerAccounts.some((account)=>account.id===accountId)){
+      setError("Select an active customer account before importing transactions.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -1149,7 +1162,7 @@ function AdminStatementOnboarding() {
       <div className="section-title"><div><h2>Historical transaction batch</h2><p>All rows are validated and inserted atomically. One invalid row prevents the entire import.</p></div><span className="status-pill">{rows.length} entries</span></div>
       <form className="form-grid" onSubmit={submit}>
         {error&&<div className="auth-error">{error}</div>}
-        <div className="form-row"><div className="field"><label>CUSTOMER ACCOUNT</label><select value={accountId} onChange={(event)=>setAccountId(event.target.value)} required>{customerAccounts.map((account)=><option key={account.id} value={account.id}>{account.customerName} · {account.type} •••• {account.accountNumber.slice(-4)} · {formatMoney(account.balanceMinor)}</option>)}</select></div><div className="onboarding-net"><small>NET BALANCE CHANGE</small><strong className={netMinor<0?"negative":""}>{netMinor>=0?"+":""}{formatMoney(netMinor)}</strong></div></div>
+        <div className="form-row"><div className="field"><label>CUSTOMER ACCOUNT</label><select value={accountId} onChange={(event)=>{setError("");setAccountId(event.target.value);}} required disabled={!customerAccounts.length}>{!customerAccounts.length&&<option value="">No eligible customer accounts</option>}{customerAccounts.map((account)=><option key={account.id} value={account.id}>{account.customerName} · {account.type} •••• {account.accountNumber.slice(-4)} · {formatMoney(account.balanceMinor)}</option>)}</select></div><div className="onboarding-net"><small>NET BALANCE CHANGE</small><strong className={netMinor<0?"negative":""}>{netMinor>=0?"+":""}{formatMoney(netMinor)}</strong></div></div>
         <div className="onboarding-entry-list">{rows.map((row,index)=><div className="onboarding-entry" key={index}>
           <span className="entry-index">{index+1}</span>
           <div className="field"><label>DIRECTION</label><select value={row.direction} onChange={(event)=>updateRow(index,{direction:event.target.value as "CREDIT"|"DEBIT"})}><option value="CREDIT">Credit</option><option value="DEBIT">Debit</option></select></div>
@@ -1161,7 +1174,7 @@ function AdminStatementOnboarding() {
         <button type="button" className="secondary-action add-history-row" onClick={()=>setRows((items)=>[...items,{direction:"CREDIT",amount:"1000.00",description:"Historical transaction",effectiveAt:localDateTimeInputValue()}])}><Plus size={14}/>Add transaction row</button>
         <div className="field"><label>REQUIRED AUDIT REASON</label><textarea value={reason} onChange={(event)=>setReason(event.target.value)} required/></div>
         <div className="impact-preview"><b>Atomic statement injection</b><span>Entries receive real references and creation timestamps, appear at their selected effective dates, and change the live account balance only after the full batch succeeds.</span></div>
-        <button className="admin-execute" disabled={submitting||!accountId}>{submitting?"Importing statement…":`Import ${rows.length} transactions`}</button>
+        <button className="admin-execute" disabled={submitting||!customerAccounts.some((account)=>account.id===accountId)}>{submitting?"Importing statement…":`Import ${rows.length} transactions`}</button>
       </form>
     </section>
     <section className="section-card">
