@@ -105,6 +105,7 @@ test("website management persists authenticated revisions and drives the public 
   const landingCss = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   const customerAuth = await readFile(new URL("../components/AuthScreen.tsx", import.meta.url), "utf8");
   const managedBrand = await readFile(new URL("../components/ManagedBrandLink.tsx", import.meta.url), "utf8");
+  const portalCss = await readFile(new URL("../app/portal.css", import.meta.url), "utf8");
   assert.match(service, /sim_website_content_revisions/i);
   assert.match(service, /saveSimulationWebsiteRevision/i);
   assert.match(service, /status = 'ARCHIVED'/i);
@@ -126,6 +127,12 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(customerAuth, /auth-form-brand/i);
   assert.match(customerAuth, /usePublicBrand/i);
   assert.match(managedBrand, /usePublicBrand/i);
+  assert.match(managedBrand, /uploaded-brand-logo/i);
+  assert.match(customerAuth, /uploaded-brand-logo/i);
+  assert.match(landing, /uploaded-brand-logo/i);
+  assert.match(landingCss, /brand-mark\.uploaded-brand-logo[\s\S]*?background:\s*transparent/i);
+  assert.match(portalCss, /portal-brand-logo[\s\S]*?background:\s*transparent/i);
+  assert.match(portalCss, /brand-preview\s*>\s*img[\s\S]*?250px/i);
   assert.match(service, /BRAND_LOGO_URL_INVALID/i);
 });
 

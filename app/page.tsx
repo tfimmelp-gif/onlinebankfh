@@ -167,8 +167,7 @@ export default function HomePage() {
         </div>
         <nav className="site-nav bank-site-nav" aria-label="Primary navigation">
           <Link href="/" className="brand" aria-label={`${brand?.bankName??"Northstar"} home`}>
-            <span className="brand-mark">{brand?.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={18}/>}</span>
-            {brand?.shortName??"NORTHSTAR"}
+            {brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"NORTHSTAR"}</>}
           </Link>
           <div className="nav-links bank-nav-links">
             <Link href="#personal">{t("Banking")} <ChevronDown size={13}/></Link>
@@ -356,7 +355,7 @@ export default function HomePage() {
       <footer className="bank-footer">
         <div className="bank-footer-main">
           <div className="bank-footer-brand">
-            <Link href="/" className="brand"><span className="brand-mark">{brand?.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={18}/>}</span>{brand?.shortName??"NORTHSTAR"}</Link>
+            <Link href="/" className="brand" aria-label={`${brand?.bankName??"Northstar"} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"NORTHSTAR"}</>}</Link>
             <p>Personal and business banking designed around clarity, control, and dependable service.</p>
           </div>
           <div><b>{t("Personal")}</b><Link href="#personal">{t("Checking")}</Link><Link href="#personal">{t("Savings")}</Link><Link href="/app/cards">{t("Virtual cards")}</Link><Link href="#borrowing">{t("Loans")}</Link></div>

@@ -18,14 +18,14 @@ export function AuthScreen({ kind }: { kind: "login" | "open" | "admin" }) {
   return (
     <main className="auth-page" style={brand?{"--blue":brand.primaryColor} as React.CSSProperties:undefined}>
       <section className="auth-panel auth-copy">
-        <Link href="/" className="brand"><span className="brand-mark">{brand?.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={17}/>}</span>{shortName}</Link>
+        <Link href="/" className="brand" aria-label={`${bankName} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={17}/></span>{shortName}</>}</Link>
         <div className="eyebrow light"><span/> {t("DIGITAL BANKING")}</div>
         <h1>{isAdmin ? <>Control every operation.<br/><em>Account for every action.</em></> : <>Your finances,<br/><em>clearly in view.</em></>}</h1>
         <p>{t(isAdmin ? "The staff realm is isolated from customer access and protected by mandatory multi-factor verification." : "Manage accounts, transfers, lending, statements, and support from one secure digital banking experience.")}</p>
         <div className="trust-row" style={{color:"#aab7c7"}}><span><Check size={14}/> {t("Secure access")}</span><span><Check size={14}/> {t("Account controls")}</span><span><Check size={14}/> {t("Audited activity")}</span></div>
       </section>
       <section className="auth-panel auth-form">
-        <Link href="/" className="brand auth-form-brand" aria-label={`${bankName} home`}><span className="brand-mark">{brand?.logoUrl?<img src={brand.logoUrl} alt=""/>:<Sparkles size={17}/>}</span>{shortName}</Link>
+        <Link href="/" className="brand auth-form-brand" aria-label={`${bankName} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={17}/></span>{shortName}</>}</Link>
         <h2>{t(isOpen ? "Open an account" : isAdmin ? "Staff sign in" : "Welcome back")}</h2>
         <p>{t(isOpen ? `Complete your application for review by the ${bankName} account services team.` : isAdmin ? "Use your authorized staff identity. MFA follows password verification." : `Sign in to your ${bankName} customer portal.`)}</p>
         {isOpen ? <CustomerSignupForm/> : !isAdmin ? <CustomerLoginForm/> : <form>

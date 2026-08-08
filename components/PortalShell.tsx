@@ -208,7 +208,7 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
     <main className={`portal-page ${isAdmin ? "admin-page" : ""}`} style={activeBrand?{"--blue":activeBrand.primaryColor} as React.CSSProperties:undefined}>
       <div className="portal-shell">
         <aside className="portal-sidebar">
-          <Link href="/" className="portal-brand"><span>{activeBrand?.logoUrl?<img src={activeBrand.logoUrl} alt=""/>:<Sparkles size={16} />}</span>{activeBrand?.shortName??"NORTHSTAR"}</Link>
+          <Link href="/" className="portal-brand" aria-label={`${activeBrand?.bankName??"Northstar Bank"} home`}>{activeBrand?.logoUrl?<span className="portal-brand-logo"><img src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"NORTHSTAR"}</>}</Link>
           <nav className="portal-nav">
             {nav.map((item, index) =>
               item.section ? <div className="nav-section" key={`${item.section}-${index}`}>{t(item.section)}</div> : (
@@ -240,7 +240,7 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
       {isAdmin&&mobileAdminNavOpen&&<div className="mobile-admin-nav-backdrop" role="presentation" onClick={()=>setMobileAdminNavOpen(false)}>
         <aside className="mobile-admin-nav-drawer" role="dialog" aria-modal="true" aria-label={t("Admin navigation")} onClick={(event)=>event.stopPropagation()}>
           <div className="mobile-admin-nav-head">
-            <Link href="/" className="portal-brand" onClick={()=>setMobileAdminNavOpen(false)}><span>{activeBrand?.logoUrl?<img src={activeBrand.logoUrl} alt=""/>:<Sparkles size={16}/>}</span>{activeBrand?.shortName??"NORTHSTAR"}</Link>
+            <Link href="/" className="portal-brand" aria-label={`${activeBrand?.bankName??"Northstar Bank"} home`} onClick={()=>setMobileAdminNavOpen(false)}>{activeBrand?.logoUrl?<span className="portal-brand-logo"><img src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"NORTHSTAR"}</>}</Link>
             <button type="button" aria-label={t("Close admin navigation")} onClick={()=>setMobileAdminNavOpen(false)}><X size={19}/></button>
           </div>
           <nav className="portal-nav">

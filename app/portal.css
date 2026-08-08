@@ -4,6 +4,8 @@
 .portal-brand { display: flex; gap: 10px; align-items: center; padding: 0 10px 28px; font-size: 13px; font-weight: 750; letter-spacing: .12em; }
 .portal-brand span { width: 30px; height: 30px; display: grid; place-items: center; background: var(--blue); }
 .portal-brand img { width: 24px; height: 24px; object-fit: contain; border-radius: 4px; }
+.portal-brand .portal-brand-logo { width: 142px; height: 46px; background: transparent !important; border-radius: 0; box-shadow: none !important; }
+.portal-brand .portal-brand-logo img { width: 100%; height: 100%; object-fit: contain; object-position: left center; border-radius: 0; }
 .portal-nav { display: grid; gap: 4px; }
 .portal-nav a { display: flex; align-items: center; gap: 12px; min-height: 43px; padding: 0 13px; color: #91a0b5; font-size: 12px; border-left: 2px solid transparent; }
 .portal-nav a:hover { color: white; background: rgba(255,255,255,.04); }
@@ -144,13 +146,16 @@
 .customer-kyc-file-list b { font-size: 9px; }.customer-kyc-file-list small { margin-top: 3px; color: #748196; font-size: 7.5px; }
 .branding-layout,.fee-workspace { margin-bottom: 14px; display: grid; grid-template-columns: 1.25fr .75fr; gap: 14px; }
 .brand-preview { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: linear-gradient(145deg,#f8fafc,#edf2f8); }
-.brand-preview > span,.brand-preview > img { width: 76px; height: 76px; display: grid; place-items: center; object-fit: contain; border-radius: 18px; background: var(--preview-brand); color: white; }
+.brand-preview > span { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 18px; background: var(--preview-brand); color: white; }
+.brand-preview > img { width: min(82%,250px); height: 112px; display: block; object-fit: contain; border: 0; border-radius: 0; background: transparent; }
 .brand-preview h2 { margin: 20px 0 5px; font-size: 24px; }.brand-preview p { margin: 0; color: #6d798a; }
 .brand-preview button { margin-top: 24px; min-height: 38px; padding: 0 18px; border: 0; color: white; font-weight: 750; }
 .brand-profile-grid { display: grid; gap: 9px; }
 .brand-profile-grid article { padding: 12px; display: grid; grid-template-columns: 42px 1fr auto auto auto; gap: 10px; align-items: center; border: 1px solid #e0e5ec; }
+.brand-profile-grid article:has(img) { grid-template-columns: 76px 1fr auto auto auto; }
 .brand-profile-grid article > span:first-child { width: 40px; height: 40px; display: grid; place-items: center; color: white; border-radius: 9px; }
-.brand-profile-grid img { max-width: 32px; max-height: 32px; object-fit: contain; }.brand-profile-grid b,.brand-profile-grid small { display: block; }.brand-profile-grid small { margin-top: 4px; color: #718096; font-size: 8px; }
+.brand-profile-grid article > span:first-child:has(img) { width: 74px; background: transparent !important; border-radius: 0; }
+.brand-profile-grid img { max-width: 70px; max-height: 38px; object-fit: contain; }.brand-profile-grid b,.brand-profile-grid small { display: block; }.brand-profile-grid small { margin-top: 4px; color: #718096; font-size: 8px; }
 .brand-profile-grid button { min-height: 30px; padding: 0 10px; border: 1px solid #d8e0eb; background: white; color: var(--blue); font-size: 8px; font-weight: 750; }
 .brand-logo-control { padding: 12px; display: grid; gap: 11px; border: 1px dashed #b9c3d1; border-radius: 9px; background: #f8fafc; }
 .brand-logo-control.has-logo { border-style: solid; border-color: #cbd8ef; background: #f5f8ff; }
@@ -1070,6 +1075,7 @@ textarea:focus-visible { outline: 3px solid rgba(40,85,217,.25); outline-offset:
   .portal-shell { grid-template-columns: 72px 1fr; }
   .portal-sidebar { padding: 24px 10px; }
   .portal-brand { font-size: 0; padding: 0 10px 25px; }
+  .portal-brand .portal-brand-logo { width: 48px; height: 42px; }
   .portal-nav a { justify-content: center; padding: 0; font-size: 0; }
   .portal-nav .nav-section, .portal-profile div, .portal-profile > svg { display: none; }
   .portal-profile { display: flex; justify-content: center; padding: 18px 0 0; }
@@ -1101,6 +1107,7 @@ textarea:focus-visible { outline: 3px solid rgba(40,85,217,.25); outline-offset:
   .mobile-admin-nav-drawer { width: min(88vw,340px); height: 100%; padding: 20px 14px 16px; display: flex; flex-direction: column; background: #10151d; color: white; box-shadow: 18px 0 45px rgba(0,0,0,.28); animation: admin-nav-in .2s ease-out; }
   .mobile-admin-nav-head { padding: 0 4px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.1); }
   .mobile-admin-nav-head .portal-brand { padding: 0; font-size: 13px; }
+  .mobile-admin-nav-head .portal-brand .portal-brand-logo { width: 142px; height: 46px; }
   .mobile-admin-nav-head button,.mobile-admin-account button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; background: rgba(255,255,255,.06); color: white; }
   .mobile-admin-nav-drawer .portal-nav { padding: 13px 2px; }
   .mobile-admin-nav-drawer .portal-nav a { min-height: 42px; padding: 0 12px; justify-content: flex-start; font-size: 9px; }
