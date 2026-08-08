@@ -43,6 +43,7 @@ import {
   ArrowUpRight,
   Users,
   WalletCards,
+  X,
   XCircle,
 } from "lucide-react";
 import "../app/portal.css";
@@ -856,6 +857,12 @@ function AdminTransferQueue() {
   // Guards the mode/stop-code controls from being reset by background refresh
   // polls while the operator has an unsaved selection in progress.
   const controlDirtyRef = useRef(false);
+  const [savedTransferControl,setSavedTransferControl] = useState<{
+    userId:string;
+    customerName:string;
+    externalMode:"STANDARD_APPROVAL"|"COMPLIANCE_CODE";
+    preferredStopCode:string|null;
+  }|null>(null);
   useEffect(()=>{
     if (controlDirtyRef.current) return;
     const control = transferControls.find((item)=>item.userId===controlUserId);
@@ -939,6 +946,13 @@ function AdminTransferQueue() {
         userId:controlUserId,
         externalMode:controlMode,
         preferredStopCode:controlMode==="COMPLIANCE_CODE"?preferredStopCode:undefined,
+      });
+      const customer = customerOptions.find((item)=>item.userId===controlUserId);
+      setSavedTransferControl({
+        userId:controlUserId,
+        customerName:customer?.name ?? controlUserId,
+        externalMode:controlMode,
+        preferredStopCode:controlMode==="COMPLIANCE_CODE"?preferredStopCode:null,
       });
       setNotice(`${controlUserId} now uses ${controlMode==="COMPLIANCE_CODE"?"compliance-code soft holds":"standard admin approval"} for external transfers.`);
     } catch (controlError) {
@@ -1038,6 +1052,25 @@ function AdminTransferQueue() {
       </section>)}
       {transferGroups.length===0&&<section className="section-card"><div className="empty-ledger">No customer external transfers have been submitted.</div></section>}
     </div>
+    {savedTransferControl&&<div className="transfer-modal-backdrop" role="presentation"><section className="beneficiary-confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="transfer-mode-confirmation-title">
+      <button className="modal-close" type="button" aria-label="Close transfer-mode confirmation" onClick={()=>setSavedTransferControl(null)}><X size={18}/></button>
+      <div className="beneficiary-confirmation-icon"><CheckCircle2 size={29}/></div>
+      <span className="confirmation-eyebrow">Transfer mode saved</span>
+      <h2 id="transfer-mode-confirmation-title">{savedTransferControl.customerName} updated</h2>
+      <p>This customer now uses the selected mode for all new external ACH and wire instructions.</p>
+      <div className="beneficiary-confirmation-profile">
+        <span><KeyRound size={21}/></span>
+        <div><b>{savedTransferControl.customerName}</b><small>{savedTransferControl.userId}</small></div>
+        <em>{savedTransferControl.externalMode==="COMPLIANCE_CODE"?"Mode 2":"Mode 1"}</em>
+      </div>
+      <dl className="beneficiary-confirmation-details">
+        <div><dt>Transfer mode</dt><dd>{savedTransferControl.externalMode==="COMPLIANCE_CODE"?"Mode 2 · Compliance-code soft hold":"Mode 1 · Standard admin approval"}</dd></div>
+        <div><dt>Preferred stop code</dt><dd>{savedTransferControl.preferredStopCode ?? "—"}</dd></div>
+        <div className="wide"><dt>Status</dt><dd>Saved successfully · the customer&apos;s next external transfer request will use this mode.</dd></div>
+      </dl>
+      <div className="beneficiary-confirmation-note"><ShieldCheck size={15}/><span>{savedTransferControl.externalMode==="COMPLIANCE_CODE"?"Mode 2 places new external transfers on a compliance soft hold until a reusable release code is verified.":"Mode 1 routes external transfer approvals through standard staff review before settlement."}</span></div>
+      <div className="confirmation-actions"><button type="button" className="secondary-action" onClick={()=>setSavedTransferControl(null)}>Keep editing</button><button type="button" className="inline-submit" onClick={()=>setSavedTransferControl(null)}>Done</button></div>
+    </section></div>}
   </>;
 }
 
