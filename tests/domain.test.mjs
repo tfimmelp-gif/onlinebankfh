@@ -115,6 +115,10 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(shell, /Publish website update/i);
   assert.match(shell, /activeBrand\?\.supportEmail\?\?settings\.supportEmail/i);
   assert.match(shell, /Active bank brand changed across the homepage, sign-in, account-opening, and portal screens/i);
+  assert.match(shell, /initializedBrandSelection/i);
+  assert.match(shell, /Uploading saves the logo immediately/i);
+  assert.match(shell, /logoUrl:result\.logoUrl/i);
+  assert.match(shell, /Current logo saved/i);
   assert.match(landing, /fetch\("\/api\/website"/i);
   assert.match(landing, /websiteSettings\.maintenanceMode/i);
   assert.match(landing, /--mobile-slide-position/i);

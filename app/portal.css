@@ -152,6 +152,14 @@
 .brand-profile-grid article > span:first-child { width: 40px; height: 40px; display: grid; place-items: center; color: white; border-radius: 9px; }
 .brand-profile-grid img { max-width: 32px; max-height: 32px; object-fit: contain; }.brand-profile-grid b,.brand-profile-grid small { display: block; }.brand-profile-grid small { margin-top: 4px; color: #718096; font-size: 8px; }
 .brand-profile-grid button { min-height: 30px; padding: 0 10px; border: 1px solid #d8e0eb; background: white; color: var(--blue); font-size: 8px; font-weight: 750; }
+.brand-logo-control { padding: 12px; display: grid; gap: 11px; border: 1px dashed #b9c3d1; border-radius: 9px; background: #f8fafc; }
+.brand-logo-control.has-logo { border-style: solid; border-color: #cbd8ef; background: #f5f8ff; }
+.brand-logo-current,.brand-logo-empty { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 12px; align-items: center; }
+.brand-logo-current > img,.brand-logo-empty > svg { width: 50px; height: 50px; padding: 5px; object-fit: contain; border: 1px solid #dce3ec; border-radius: 8px; background: white; color: var(--blue); }
+.brand-logo-current b,.brand-logo-current small,.brand-logo-empty b,.brand-logo-empty small { display: block; }
+.brand-logo-current b,.brand-logo-empty b { color: #26384e; font-size: 9px; }
+.brand-logo-current small,.brand-logo-empty small { margin-top: 4px; color: #68778b; font-size: 7.5px; line-height: 1.45; }
+.brand-logo-control input[type="file"] { min-height: 38px; padding: 7px 9px; background: white; }
 .fee-calculator dl { margin: 18px 0 0; display: grid; gap: 9px; }.fee-calculator dl > div { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e9ef; }.fee-calculator dt { color: #68768a; font-size: 9px; }.fee-calculator dd { margin: 0; font-size: 10px; font-weight: 750; }.fee-calculator .fee-total { padding: 14px; border: 0; background: #eef3ff; color: var(--blue); }
 .transaction-category-controls { margin-bottom: 14px; }
 .transaction-customer-groups { display: grid; gap: 14px; }
