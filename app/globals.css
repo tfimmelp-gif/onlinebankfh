@@ -56,8 +56,8 @@ button { cursor: pointer; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; letter-spacing: .14em; font-size: 13px; }
 .brand-mark { width: 31px; height: 31px; display: grid; place-items: center; background: var(--blue); color: white; }
 .brand-mark img { width: 100%; height: 100%; padding: 4px; object-fit: contain; border-radius: inherit; }
-.brand-mark.uploaded-brand-logo { width: clamp(118px,13vw,164px); height: 46px; background: transparent !important; border: 0; border-radius: 0; box-shadow: none !important; }
-.brand-mark.uploaded-brand-logo img { width: 100%; height: 100%; padding: 0; object-fit: contain; object-position: left center; border-radius: 0; }
+.brand-mark.uploaded-brand-logo { width: clamp(108px,11vw,138px); height: 38px; overflow: hidden; background: transparent !important; border: 0; border-radius: 0; box-shadow: none !important; }
+.brand-mark.uploaded-brand-logo img { width: 100%; height: 100%; padding: 0; object-fit: cover; object-position: center; border-radius: 0; }
 .nav-links { display: flex; gap: 34px; color: #49566a; font-size: 13px; }
 .nav-actions { display: flex; justify-content: flex-end; align-items: center; gap: 22px; }
 .text-link { font-size: 13px; font-weight: 650; }
@@ -292,7 +292,7 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
 .bank-header.scrolled .bank-site-nav { height: 68px; }
 .bank-site-nav .brand { font-size: 14px; color: #0a1b2e; }
 .bank-site-nav .brand-mark { width: 34px; height: 34px; border-radius: 2px; }
-.bank-site-nav .brand-mark.uploaded-brand-logo { width: clamp(132px,14vw,178px); height: 48px; }
+.bank-site-nav .brand-mark.uploaded-brand-logo { width: clamp(112px,12vw,142px); height: 40px; }
 .bank-nav-links { gap: 31px; }
 .bank-nav-links a { position: relative; display: inline-flex; align-items: center; gap: 5px; color: #24394e; font-size: 12px; font-weight: 700; transition: color .2s ease; }
 .bank-nav-links a::after { content: ""; position: absolute; right: 0; bottom: -9px; left: 0; height: 2px; background: var(--blue); transform: scaleX(0); transform-origin: left; transition: transform .22s ease; }
@@ -504,6 +504,7 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
   .bank-nav-links,
   .bank-sign-in { display: none; }
   .bank-site-nav { height: 68px; grid-template-columns: 1fr auto; padding-inline: 18px; }
+  .bank-site-nav .brand-mark.uploaded-brand-logo { width: 116px; height: 34px; }
   .bank-site-nav .nav-actions .button { display: none; }
   .mobile-menu-button { display: grid; }
   .mobile-bank-menu { position: absolute; inset: 68px 0 auto; z-index: 20; display: grid; padding: 11px 18px 18px; border-top: 1px solid #edf0f3; background: #fff; box-shadow: 0 18px 30px rgba(9,28,48,.12); }
@@ -548,6 +549,7 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
   .bank-footer-legal { align-items: flex-start; flex-direction: column; margin-inline: 20px; }
 }
 @media (max-width: 430px) {
+  .bank-site-nav .brand-mark.uploaded-brand-logo { width: 104px; height: 32px; }
   .bank-landing .simulation-bar { font-size: 8px; letter-spacing: .08em; }
   .bank-hero-actions { align-items: flex-start; flex-direction: column; gap: 15px; }
   .bank-hero-inner { padding-bottom: 145px; }

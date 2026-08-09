@@ -120,6 +120,9 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(shell, /Uploading saves the logo immediately/i);
   assert.match(shell, /logoUrl:result\.logoUrl/i);
   assert.match(shell, /Current logo saved/i);
+  assert.match(shell, /normalizeBrandLogoFile/i);
+  assert.match(shell, /lightBackground/i);
+  assert.match(shell, /The active logo was cropped, made transparent, and refreshed across the site/i);
   assert.match(landing, /fetch\("\/api\/website"/i);
   assert.match(landing, /websiteSettings\.maintenanceMode/i);
   assert.match(landing, /--mobile-slide-position/i);
@@ -131,6 +134,7 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(customerAuth, /uploaded-brand-logo/i);
   assert.match(landing, /uploaded-brand-logo/i);
   assert.match(landingCss, /brand-mark\.uploaded-brand-logo[\s\S]*?background:\s*transparent/i);
+  assert.match(landingCss, /max-width:\s*760px[\s\S]*?uploaded-brand-logo[\s\S]*?116px/i);
   assert.match(portalCss, /portal-brand-logo[\s\S]*?background:\s*transparent/i);
   assert.match(portalCss, /brand-preview\s*>\s*img[\s\S]*?250px/i);
   assert.match(service, /BRAND_LOGO_URL_INVALID/i);
