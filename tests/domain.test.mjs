@@ -134,6 +134,9 @@ test("website management persists authenticated revisions and drives the public 
   assert.match(customerAuth, /uploaded-brand-logo/i);
   assert.match(landing, /uploaded-brand-logo/i);
   assert.match(landingCss, /brand-mark\.uploaded-brand-logo[\s\S]*?background:\s*transparent/i);
+  assert.match(landingCss, /dark-surface-logo[\s\S]*?brightness\(0\)\s*invert\(1\)/i);
+  assert.match(landingCss, /brand-color-layer[\s\S]*?clip-path/i);
+  assert.match(shell, /portal-brand-logo dark-surface-logo/i);
   assert.match(landingCss, /max-width:\s*760px[\s\S]*?uploaded-brand-logo[\s\S]*?116px/i);
   assert.match(portalCss, /portal-brand-logo[\s\S]*?background:\s*transparent/i);
   assert.match(portalCss, /brand-preview\s*>\s*img[\s\S]*?250px/i);

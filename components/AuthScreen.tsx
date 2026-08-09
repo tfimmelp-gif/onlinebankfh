@@ -18,7 +18,7 @@ export function AuthScreen({ kind }: { kind: "login" | "open" | "admin" }) {
   return (
     <main className="auth-page" style={brand?{"--blue":brand.primaryColor} as React.CSSProperties:undefined}>
       <section className="auth-panel auth-copy">
-        <Link href="/" className="brand" aria-label={`${bankName} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={17}/></span>{shortName}</>}</Link>
+        <Link href="/" className="brand" aria-label={`${bankName} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo dark-surface-logo"><img src={brand.logoUrl} alt=""/><img className="brand-color-layer" src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={17}/></span>{shortName}</>}</Link>
         <div className="eyebrow light"><span/> {t("DIGITAL BANKING")}</div>
         <h1>{isAdmin ? <>Control every operation.<br/><em>Account for every action.</em></> : <>Your finances,<br/><em>clearly in view.</em></>}</h1>
         <p>{t(isAdmin ? "The staff realm is isolated from customer access and protected by mandatory multi-factor verification." : "Manage accounts, transfers, lending, statements, and support from one secure digital banking experience.")}</p>
