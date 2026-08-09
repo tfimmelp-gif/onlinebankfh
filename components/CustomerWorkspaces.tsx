@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowLeft,
   ArrowRightLeft,
   Building2,
   CalendarClock,
@@ -189,7 +191,7 @@ function VirtualCardsWorkspace() {
 }
 
 function WorkspaceHeader({ title, copy, action, onAction }: { title: string; copy: string; action?: string; onAction?: () => void }) {
-  return <div className="overview-head"><div><h2>{title}</h2><p>{copy}</p></div>{action && <button className="primary-action" onClick={onAction}><Plus size={14}/>{action}</button>}</div>;
+  return <div className="workspace-heading"><Link href="/app" className="workspace-back"><ArrowLeft size={14}/>Back to overview</Link><div className="overview-head"><div><h2>{title}</h2><p>{copy}</p></div>{action && <button className="primary-action" onClick={onAction}><Plus size={14}/>{action}</button>}</div></div>;
 }
 
 function NoticeBar({ notice, clear }: { notice: Notice; clear: () => void }) {
@@ -630,7 +632,7 @@ function TransfersWorkspace() {
     const targetAccountId = mode==="p2p" ? "acct-checking-3321" : destinationAccountId;
     const source = customerAccounts.find((account)=>account.id===sourceAccountId);
     const destination = accounts.find((account)=>account.id===targetAccountId);
-    const recipientLookup = String(form.get("recipientLookup") || "Maya Chen").trim();
+    const recipientLookup = String(form.get("recipientLookup") || "").trim();
     setInternalConfirmation({
       phase:"review",
       mode,
@@ -638,7 +640,7 @@ function TransfersWorkspace() {
         sourceAccountId,
         destinationAccountId: targetAccountId,
         amountMinor,
-        description: String(form.get("memo") || (mode==="internal"?"Transfer between my accounts":"P2P transfer to Maya Chen")),
+        description: String(form.get("memo") || (mode==="internal"?"Transfer between my accounts":`P2P transfer to ${recipientLookup}`)),
         effectiveAt: new Date().toISOString(),
         scheduledFor: executionMode==="SCHEDULED"?new Date(scheduledFor).toISOString():undefined,
         idempotencyKey:crypto.randomUUID(),
@@ -646,7 +648,7 @@ function TransfersWorkspace() {
       sourceLabel:`${source?.type ?? "Account"} · ${source?.accountNumber.slice(-4) ?? ""}`,
       destinationLabel:mode==="internal"
         ? `${destination?.type ?? "Account"} · ${destination?.accountNumber.slice(-4) ?? ""}`
-        : `${destination?.customerName ?? "Maya Chen"} · ${recipientLookup}`,
+        : `${destination?.customerName ?? "Customer"} · ${recipientLookup}`,
     });
   }
 
@@ -660,18 +662,18 @@ function TransfersWorkspace() {
         <form className="form-grid" onSubmit={submit}>
           <div className="field"><label>FROM ACCOUNT</label><select value={sourceAccountId} onChange={(event)=>{const next=event.target.value;setSourceAccountId(next);if(next===destinationAccountId){setDestinationAccountId(customerAccounts.find((account)=>account.id!==next)?.id ?? "");}}}>{customerAccounts.map((account)=><option key={account.id} value={account.id}>{account.type} · {account.accountNumber.slice(-4)} — {formatMoney(account.balanceMinor)}</option>)}</select></div>
           {mode==="internal" && <div className="field"><label>TO MY ACCOUNT</label><select value={destinationAccountId} onChange={(event)=>setDestinationAccountId(event.target.value)}>{customerAccounts.filter((account)=>account.id!==sourceAccountId).map((account)=><option key={account.id} value={account.id}>{account.type} · {account.accountNumber.slice(-4)} — {formatMoney(account.balanceMinor)}</option>)}</select></div>}
-          {mode==="p2p" && <><div className="field"><label>FIND CUSTOMER BY</label><select><option>Email address</option><option>Username</option><option>Account number</option></select></div><div className="field"><label>RECIPIENT</label><input name="recipientLookup" defaultValue="maya@example.test" placeholder="Email, username, or account number" required/></div></>}
+          {mode==="p2p" && <><div className="field"><label>FIND CUSTOMER BY</label><select><option>Email address</option><option>Username</option><option>Account number</option></select></div><div className="field"><label>RECIPIENT</label><input name="recipientLookup" placeholder="Email, username, or account number" autoComplete="off" required/></div></>}
           {mode==="external" && <>
             <div className="external-form-heading"><Building2 size={16}/><div><b>Recipient &amp; bank</b><span>Enter the beneficiary&apos;s payment instructions.</span></div></div>
-            <div className="form-row"><div className="field"><label>TRANSFER RAIL</label><select value={externalRail} onChange={(event)=>setExternalRail(event.target.value as BankingTransferRequest["rail"])}><option value="ACH">ACH</option><option value="DOMESTIC_WIRE">Domestic wire</option><option value="INTERNATIONAL_WIRE">International wire</option></select></div><div className="field"><label>RECIPIENT NAME</label><input name="recipientName" defaultValue="Northstar Supply LLC" required/></div></div>
-            <div className="form-row"><div className="field"><label>BANK NAME</label><input name="bankName" defaultValue="Northstar Correspondent Bank" required/></div><div className="field"><label>BANK ADDRESS</label><input name="bankAddress" defaultValue="100 Market Plaza, New York, NY 10005" required/></div></div>
-            <div className="form-row"><div className="field"><label>ROUTING NUMBER</label><input name="routingNumber" defaultValue="021000021" required/></div><div className="field"><label>ACCOUNT NUMBER</label><input name="accountNumber" defaultValue="0007712048" required/></div></div>
-            {externalRail==="INTERNATIONAL_WIRE"&&<div className="field"><label>SWIFT / BIC</label><input name="swiftBic" defaultValue="NSSBUS33" required/></div>}
+            <div className="form-row"><div className="field"><label>TRANSFER RAIL</label><select value={externalRail} onChange={(event)=>setExternalRail(event.target.value as BankingTransferRequest["rail"])}><option value="ACH">ACH</option><option value="DOMESTIC_WIRE">Domestic wire</option><option value="INTERNATIONAL_WIRE">International wire</option></select></div><div className="field"><label>RECIPIENT NAME</label><input name="recipientName" placeholder="Full name or business name" autoComplete="off" required/></div></div>
+            <div className="form-row"><div className="field"><label>BANK NAME</label><input name="bankName" placeholder="Recipient bank name" autoComplete="off" required/></div><div className="field"><label>BANK ADDRESS</label><input name="bankAddress" placeholder="Bank street address, city, and postal code" autoComplete="off" required/></div></div>
+            <div className="form-row"><div className="field"><label>ROUTING NUMBER</label><input name="routingNumber" placeholder="Enter routing number" inputMode="numeric" autoComplete="off" required/></div><div className="field"><label>ACCOUNT NUMBER</label><input name="accountNumber" placeholder="Enter recipient account number" inputMode="numeric" autoComplete="off" required/></div></div>
+            {externalRail==="INTERNATIONAL_WIRE"&&<div className="field"><label>SWIFT / BIC</label><input name="swiftBic" placeholder="Enter SWIFT or BIC" autoComplete="off" required/></div>}
             <div className="external-form-heading"><MapPin size={16}/><div><b>Recipient address</b><span>Included with the payment instruction.</span></div></div>
-            <div className="field"><label>STREET ADDRESS</label><input name="recipientAddressLine1" defaultValue="240 Market Street" required/></div>
+            <div className="field"><label>STREET ADDRESS</label><input name="recipientAddressLine1" placeholder="Recipient street address" autoComplete="off" required/></div>
             <div className="field"><label>ADDRESS LINE 2</label><input name="recipientAddressLine2" placeholder="Suite, floor, or unit (optional)"/></div>
-            <div className="form-row"><div className="field"><label>CITY</label><input name="recipientCity" defaultValue="New York" required/></div><div className="field"><label>STATE / REGION</label><input name="recipientStateRegion" defaultValue="NY" required/></div></div>
-            <div className="form-row"><div className="field"><label>POSTAL CODE</label><input name="recipientPostalCode" defaultValue="10005" required/></div><div className="field"><label>COUNTRY CODE</label><input name="recipientCountryCode" defaultValue="US" maxLength={2} required/></div></div>
+            <div className="form-row"><div className="field"><label>CITY</label><input name="recipientCity" placeholder="City" autoComplete="off" required/></div><div className="field"><label>STATE / REGION</label><input name="recipientStateRegion" placeholder="State or region" autoComplete="off" required/></div></div>
+            <div className="form-row"><div className="field"><label>POSTAL CODE</label><input name="recipientPostalCode" placeholder="Postal code" autoComplete="off" required/></div><div className="field"><label>COUNTRY CODE</label><input name="recipientCountryCode" placeholder="Two-letter code" autoCapitalize="characters" autoComplete="off" maxLength={2} required/></div></div>
           </>}
           <div className="form-row"><div className="field"><label>AMOUNT (USD)</label><input type="number" min="0.01" step="0.01" value={amount} onChange={(event)=>setAmount(event.target.value)} required/></div><div className="field"><label>EXECUTION</label><select value={executionMode} onChange={event=>setExecutionMode(event.target.value as typeof executionMode)}><option value="IMMEDIATE">{mode==="external"?"Submit immediately":"Send immediately"}</option><option value="SCHEDULED">Schedule for later</option></select></div></div>
           {executionMode==="SCHEDULED"&&<div className="field"><label>SCHEDULED DATE AND TIME</label><input type="datetime-local" value={scheduledFor} min={minimumTransferTime} onChange={event=>setScheduledFor(event.target.value)} required/><small>{mode==="external"?"The request remains scheduled until its selected processing date.":"Balances will not change until the scheduled execution time."}</small></div>}

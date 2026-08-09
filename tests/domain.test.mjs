@@ -210,13 +210,23 @@ test("live support chat persists customer and staff messages", async () => {
   assert.match(panel, /realm:\s*"customer"\s*\|\s*"admin"/i);
 });
 
-test("admin mobile navigation and interface translation cover operational screens", async () => {
+test("customer and admin mobile navigation cover every portal section", async () => {
   const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
   const css = await readFile(new URL("../app/portal.css", import.meta.url), "utf8");
+  const customerWorkspace = await readFile(new URL("../components/CustomerWorkspaces.tsx", import.meta.url), "utf8");
+  const customerLogin = await readFile(new URL("../components/CustomerLoginForm.tsx", import.meta.url), "utf8");
   const language = await readFile(new URL("../components/LanguageProvider.tsx", import.meta.url), "utf8");
-  assert.match(shell, /mobileAdminNavOpen/i);
+  assert.match(shell, /mobileNavOpen/i);
   assert.match(shell, /mobile-admin-nav-drawer/i);
+  assert.match(shell, /Open customer navigation/i);
+  assert.match(shell, /mobile-customer-brand/i);
+  assert.match(shell, /nav\.map/i);
   assert.match(css, /@media \(max-width: 620px\)[\s\S]*?mobile-admin-nav-backdrop/i);
+  assert.match(css, /customer-mobile-nav/i);
+  assert.match(customerWorkspace, /workspace-back/i);
+  assert.doesNotMatch(customerWorkspace, /defaultValue="(?:Northstar Supply LLC|Northstar Correspondent Bank|021000021|0007712048|NSSBUS33|maya@example\.test)"/i);
+  assert.match(customerLogin, /useState\(""\)/i);
+  assert.doesNotMatch(customerLogin, /useState\("alex@example\.test"\)/i);
   assert.match(css, /admin-support-inbox[\s\S]*?grid-template-columns/i);
   assert.match(language, /interfaceTranslations/i);
   assert.match(language, /MutationObserver/i);
@@ -398,6 +408,13 @@ test("signup login transfer and deposit events queue email alerts", async () => 
   assert.match(service, /authorization:\s*`Bearer \$\{resendApiKey\}`/i);
   assert.match(service, /idempotency-key/i);
   assert.match(service, /RESEND_FROM_EMAIL/i);
+  assert.match(service, /getActiveSimulationBrand\(\)/i);
+  assert.match(service, /absoluteEmailLogoUrl/i);
+  assert.match(service, /process\.env\.NORTHSTAR_HOST/i);
+  assert.match(service, /<img src=\"\$\{escapeEmailHtml\(logoUrl\)\}\"/i);
+  assert.match(service, /renderBrandedEmail\(subject, body, brand\)/i);
+  assert.match(service, /Support: \$\{brand\.supportEmail\}/i);
+  assert.doesNotMatch(service, />NORTHSTAR<\/td>/i);
   assert.match(login, /eventType:\s*"LOGIN"/i);
   assert.match(signup, /eventType:\s*"SIGNUP"/i);
   assert.match(service, /eventType:\s*"TRANSFER"/i);

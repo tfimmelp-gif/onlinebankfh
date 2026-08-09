@@ -15,7 +15,7 @@ function message(value: unknown, fallback: string) {
 export function CustomerLoginForm() {
   const {t}=useLanguage();
   const [view,setView] = useState<View>("LOGIN");
-  const [email, setEmail] = useState("alex@example.test");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe,setRememberMe] = useState(false);
   const [error, setError] = useState("");

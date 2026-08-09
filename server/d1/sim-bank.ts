@@ -1672,10 +1672,42 @@ function escapeEmailHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function renderNorthstarEmail(subject: string, body: string) {
+function publicEmailOrigin() {
+  const configured = process.env.NORTHSTAR_HOST?.trim();
+  if (!configured) return null;
+  try {
+    const localHost = /^(localhost|127\.0\.0\.1)(?::\d+)?(?:\/|$)/i.test(configured);
+    return new URL(configured.includes("://") ? configured : `${localHost ? "http" : "https"}://${configured}`).origin;
+  } catch {
+    return null;
+  }
+}
+
+function absoluteEmailLogoUrl(logoUrl: string | null) {
+  if (!logoUrl) return null;
+  if (/^https:\/\//i.test(logoUrl)) return logoUrl;
+  const origin = publicEmailOrigin();
+  if (!origin || !logoUrl.startsWith("/")) return null;
+  try { return new URL(logoUrl, origin).toString(); }
+  catch { return null; }
+}
+
+function applyActiveEmailBrand(value: string, bankName: string) {
+  return value.replace(/\bNorthstar(?: Bank)?\b/gi, bankName);
+}
+
+function renderBrandedEmail(subject: string, body: string, brand: SimBrandProfile) {
   const safeSubject = escapeEmailHtml(subject);
   const safeBody = escapeEmailHtml(body).replaceAll("\n", "<br/>");
-  return `<!doctype html><html><body style="margin:0;background:#f3f6f9;font-family:Arial,sans-serif;color:#20364a"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:28px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;background:#ffffff;border:1px solid #dbe4ec"><tr><td style="padding:22px 28px;background:#102d49;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.08em">NORTHSTAR</td></tr><tr><td style="padding:30px 28px"><h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#17324a">${safeSubject}</h1><p style="margin:0;font-size:15px;line-height:1.7;color:#52677a">${safeBody}</p></td></tr><tr><td style="padding:18px 28px;border-top:1px solid #e4eaf0;color:#7b8997;font-size:12px">This automated message was sent by Northstar. Do not reply with passwords or verification codes.</td></tr></table></td></tr></table></body></html>`;
+  const safeBankName = escapeEmailHtml(brand.bankName);
+  const safeShortName = escapeEmailHtml(brand.shortName);
+  const safeSupportEmail = escapeEmailHtml(brand.supportEmail);
+  const safePrimaryColor = /^#[0-9a-f]{6}$/i.test(brand.primaryColor) ? brand.primaryColor : "#2855d9";
+  const logoUrl = absoluteEmailLogoUrl(brand.logoUrl);
+  const brandMark = logoUrl
+    ? `<img src="${escapeEmailHtml(logoUrl)}" width="190" alt="${safeBankName}" style="display:block;width:auto;max-width:190px;height:auto;max-height:58px;border:0;outline:none;text-decoration:none"/>`
+    : `<span style="font-size:19px;line-height:1.2;font-weight:800;letter-spacing:.08em;color:#102d49">${safeShortName}</span>`;
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head><body style="margin:0;background:#f3f6f9;font-family:Arial,sans-serif;color:#20364a"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${safeSubject}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;padding:28px 12px;background:#f3f6f9"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:580px;background:#ffffff;border:1px solid #dbe4ec;border-top:5px solid ${safePrimaryColor};border-radius:10px;overflow:hidden"><tr><td style="padding:22px 28px;background:#ffffff">${brandMark}</td></tr><tr><td style="padding:26px 28px 32px"><h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#17324a">${safeSubject}</h1><p style="margin:0;font-size:15px;line-height:1.7;color:#52677a">${safeBody}</p></td></tr><tr><td style="padding:18px 28px;border-top:1px solid #e4eaf0;color:#7b8997;font-size:12px;line-height:1.6">This automated message was sent by ${safeBankName}. Do not reply with passwords or verification codes.<br/>Need help? <a href="mailto:${safeSupportEmail}" style="color:${safePrimaryColor};text-decoration:none">${safeSupportEmail}</a></td></tr></table></td></tr></table></body></html>`;
 }
 
 export async function queueSimulationEmailAlert(input: {
@@ -1690,12 +1722,19 @@ export async function queueSimulationEmailAlert(input: {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const email = input.email?.trim().toLowerCase() || simulationEmailForUser(input.userId);
+  const brand = await getActiveSimulationBrand() ?? {
+    id: "brand-northstar", bankName: "Northstar Bank", shortName: "NORTHSTAR",
+    supportEmail: "support@northstar.test", logoUrl: null, primaryColor: "#2855d9",
+    active: 1, updatedAt: createdAt, updatedBy: "System",
+  };
+  const subject = applyActiveEmailBrand(input.subject, brand.bankName);
+  const body = applyActiveEmailBrand(input.body, brand.bankName);
   await db.batch([
     db.prepare(`INSERT INTO sim_email_alerts
       (id, user_id, email, event_type, subject, body, status, provider_message_id,
        failure_message, created_at, sent_at)
       VALUES (?, ?, ?, ?, ?, ?, 'QUEUED', NULL, NULL, ?, NULL)`)
-      .bind(id, input.userId, email, input.eventType, input.subject, input.body, createdAt),
+      .bind(id, input.userId, email, input.eventType, subject, body, createdAt),
   ]);
 
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
@@ -1720,9 +1759,9 @@ export async function queueSimulationEmailAlert(input: {
       body: JSON.stringify({
         from: resendFrom,
         to: [email],
-        subject: input.subject,
-        text: input.body,
-        html: renderNorthstarEmail(input.subject, input.body),
+        subject,
+        text: `${body}\n\n${brand.bankName} | Support: ${brand.supportEmail}`,
+        html: renderBrandedEmail(subject, body, brand),
         ...(process.env.RESEND_REPLY_TO?.trim()
           ? { reply_to: process.env.RESEND_REPLY_TO.trim() }
           : {}),
