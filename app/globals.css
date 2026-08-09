@@ -307,6 +307,7 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
 .bank-site-nav .button:hover { transform: translateY(-2px); box-shadow: 0 11px 25px color-mix(in srgb,var(--blue) 28%,transparent); }
 .mobile-menu-button { display: none; width: 41px; height: 41px; place-items: center; border: 1px solid #d9e0e6; background: #fff; color: #13283d; }
 .mobile-bank-menu { display: none; }
+.mobile-bank-menu-backdrop { display: none; }
 .public-maintenance-notice { min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 9px; padding: 9px 20px; border-top: 1px solid #ead9b8; border-bottom: 1px solid #ead9b8; background: #fff6e6; color: #694815; font-size: 11px; }
 .public-maintenance-notice svg { flex: 0 0 auto; color: #9b6818; }
 .public-maintenance-notice b { margin-right: 4px; }
@@ -509,9 +510,20 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
   .bank-site-nav { height: 68px; grid-template-columns: 1fr auto; padding-inline: 18px; }
   .bank-site-nav .brand-mark.uploaded-brand-logo { width: 116px; height: 34px; }
   .bank-site-nav .nav-actions .button { display: none; }
-  .mobile-menu-button { display: grid; }
-  .mobile-bank-menu { position: absolute; inset: 68px 0 auto; z-index: 20; display: grid; padding: 11px 18px 18px; border-top: 1px solid #edf0f3; background: #fff; box-shadow: 0 18px 30px rgba(9,28,48,.12); }
-  .mobile-bank-menu a { padding: 13px 3px; border-bottom: 1px solid #edf0f3; color: #1c334a; font-size: 12px; font-weight: 700; }
+  .mobile-menu-button { display: grid; border-radius: 12px; transition: background .18s,border-color .18s,transform .18s; }
+  .mobile-menu-button:hover { border-color: color-mix(in srgb,var(--blue) 28%,#d9e0e6); background: color-mix(in srgb,var(--blue) 5%,white); }
+  .mobile-menu-button:active { transform: scale(.96); }
+  .mobile-bank-menu-backdrop { position: fixed; inset: 68px 0 0; z-index: 18; display: block; width: 100%; border: 0; background: rgba(4,17,31,.46); backdrop-filter: blur(3px); }
+  .mobile-bank-menu { position: fixed; inset: 68px 12px auto; z-index: 20; display: grid; gap: 17px; max-height: calc(100dvh - 84px); padding: 21px; overflow-y: auto; border: 1px solid #e1e7ed; border-radius: 0 0 18px 18px; background: rgba(255,255,255,.99); box-shadow: 0 25px 60px rgba(6,24,42,.24); animation: mobile-bank-menu-in .2s ease-out; }
+  .mobile-bank-menu-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; padding-bottom: 15px; border-bottom: 1px solid #e8edf1; }
+  .mobile-bank-menu-title span { color: #10283f; font: 400 24px/1 var(--font-serif); }
+  .mobile-bank-menu-title small { color: #718295; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .mobile-bank-menu-links { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mobile-bank-menu-links a { min-height: 57px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 13px 14px; border: 1px solid #e2e8ee; border-radius: 11px; background: #f8fafc; color: #20394f; font-size: 11px; font-weight: 750; }
+  .mobile-bank-menu-links a svg { color: var(--blue); }
+  .mobile-bank-menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mobile-bank-menu-actions a { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 1px solid #cdd8e2; border-radius: 10px; color: #18324a; font-size: 11px; font-weight: 800; }
+  .mobile-bank-menu-actions a:last-child { border-color: var(--blue); background: var(--blue); color: #fff; }
   .bank-hero { height: 665px; min-height: 665px; }
   .bank-hero-slide > img { object-position: var(--mobile-slide-position,66% center); }
   .bank-hero-shade { background: linear-gradient(90deg,rgba(5,18,31,.93),rgba(5,18,31,.55)); }
@@ -569,7 +581,13 @@ footer > div { justify-self: end; display: flex; gap: 24px; font-size: 11px; fon
   .bank-final-cta h2 { font-size: 38px; }
   .bank-footer-main { grid-template-columns: 1fr; }
   .bank-footer-brand { grid-column: auto; }
+  .mobile-bank-menu { inset-inline: 8px; padding: 18px 15px; }
+  .mobile-bank-menu-title { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .mobile-bank-menu-links,
+  .mobile-bank-menu-actions { grid-template-columns: 1fr; }
 }
+
+@keyframes mobile-bank-menu-in { from { opacity: 0; transform: translateY(-9px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .bank-hero-slide,

@@ -93,6 +93,7 @@ export function CustomerSignupForm() {
       <div className="field"><label>PHONE</label><input name="phone" placeholder="+1 555 010 2000" required/></div>
     </div>
     <div className="field"><label>IDENTIFICATION TYPE</label><select name="idType"><option>Passport</option><option>Driver license</option><option>National ID</option></select></div>
+    <div className="field"><label>ACCOUNT TYPE</label><select name="accountType" defaultValue="CHECKING"><option value="CHECKING">Checking account</option><option value="SAVINGS">Savings account</option><option value="INVESTMENT">Investment account</option></select><small>Select the account you want opened after application approval.</small></div>
     {error&&<div className="auth-error" role="alert">{error}</div>}
     <button className="button button-blue" disabled={submitting}>{submitting?"Submitting…":"Submit application"} <ArrowRight size={16}/></button>
   </form>;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from "react";
 
 export type PublicBrand = {
   id: string;
@@ -11,8 +11,10 @@ export type PublicBrand = {
   primaryColor: string;
 };
 
-export function usePublicBrand() {
-  const [brand,setBrand]=useState<PublicBrand | null>(null);
+const PublicBrandContext=createContext<PublicBrand|null>(null);
+
+export function PublicBrandProvider({initialBrand,children}:{initialBrand:PublicBrand|null;children:ReactNode}) {
+  const [brand,setBrand]=useState<PublicBrand | null>(initialBrand);
 
   useEffect(()=>{
     let active=true;
@@ -32,5 +34,7 @@ export function usePublicBrand() {
     return()=>{active=false;channel.close();};
   },[]);
 
-  return brand;
+  return createElement(PublicBrandContext.Provider,{value:brand},children);
 }
+
+export function usePublicBrand() { return useContext(PublicBrandContext); }

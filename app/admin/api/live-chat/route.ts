@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSessionToken } from "../../../../server/auth/admin-session";
 import { validateMutationRequest } from "../../../../server/security/request";
-import { getSimulationLiveChat, listSimulationLiveChatCustomers, postSimulationLiveChatMessage } from "../../../../server/d1/sim-bank";
+import { getSimulationAdminSettings, getSimulationLiveChat, listSimulationLiveChatCustomers, postSimulationLiveChatMessage } from "../../../../server/d1/sim-bank";
 
 function cookieValue(request: Request) {
   const rawCookie = request.headers.get("cookie") ?? "";
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json(await postSimulationLiveChatMessage({
       userId: body.userId.trim(),
       senderKind: "STAFF",
-      senderName: "Sarah Okafor",
+      senderName: (await getSimulationAdminSettings()).identity.displayName,
       body: body.body ?? "",
     }), { status: 201 });
   } catch (error) {

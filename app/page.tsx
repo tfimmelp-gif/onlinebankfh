@@ -68,6 +68,7 @@ const products = [
 ];
 
 type PublicWebsiteSettings = {
+  pageTitle: string;
   heroHeading: string;
   heroMessage: string;
   supportEmail: string;
@@ -78,6 +79,7 @@ type PublicWebsiteSettings = {
 };
 
 const defaultPublicWebsiteSettings: PublicWebsiteSettings = {
+  pageTitle: "Online Banking",
   heroHeading: slides[0].title,
   heroMessage: slides[0].copy,
   supportEmail: "support@northstar.test",
@@ -113,6 +115,17 @@ export default function HomePage() {
     channel.onmessage = ()=>void load();
     return ()=>{ active=false; channel.close(); };
   },[]);
+
+  useEffect(()=>{if(websiteSettings.pageTitle.trim())document.title=websiteSettings.pageTitle.trim();},[websiteSettings.pageTitle]);
+
+  useEffect(()=>{
+    if(!menuOpen)return;
+    const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==="Escape")setMenuOpen(false);};
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    window.addEventListener("keydown",closeOnEscape);
+    return()=>{document.body.style.overflow=previousOverflow;window.removeEventListener("keydown",closeOnEscape);};
+  },[menuOpen]);
 
   useEffect(() => {
     if (paused) return;
@@ -166,8 +179,8 @@ export default function HomePage() {
           <div><Link href="#help">{t("Help center")}</Link></div>
         </div>
         <nav className="site-nav bank-site-nav" aria-label="Primary navigation">
-          <Link href="/" className="brand" aria-label={`${brand?.bankName??"Northstar"} home`}>
-            {brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"NORTHSTAR"}</>}
+          <Link href="/" className="brand" aria-label={`${brand?.bankName??"Online banking"} home`}>
+            {brand?.logoUrl?<span className="brand-mark uploaded-brand-logo"><img src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"ONLINE BANKING"}</>}
           </Link>
           <div className="nav-links bank-nav-links">
             <Link href="#personal">{t("Banking")} <ChevronDown size={13}/></Link>
@@ -178,19 +191,17 @@ export default function HomePage() {
           <div className="nav-actions">
             <Link href="/login" className="bank-sign-in"><LockKeyhole size={14}/>{t("Sign in")}</Link>
             <Link href="/open-account" className="button button-blue">{t("Open an account")} <ArrowRight size={15}/></Link>
-            <button className="mobile-menu-button" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} onClick={()=>setMenuOpen((open)=>!open)}>
+            <button className="mobile-menu-button" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} aria-controls="mobile-bank-menu" onClick={()=>setMenuOpen((open)=>!open)}>
               {menuOpen ? <X size={20}/> : <Menu size={20}/>}
             </button>
           </div>
         </nav>
         {menuOpen&&(
-          <div className="mobile-bank-menu">
-            <Link href="#personal" onClick={()=>setMenuOpen(false)}>{t("Personal banking")}</Link>
-            <Link href="#borrowing" onClick={()=>setMenuOpen(false)}>{t("Borrowing")}</Link>
-            <Link href="#business" onClick={()=>setMenuOpen(false)}>{t("Business banking")}</Link>
-            <Link href="#security" onClick={()=>setMenuOpen(false)}>{t("Security")}</Link>
-            <Link href="/login" onClick={()=>setMenuOpen(false)}>{t("Customer sign in")}</Link>
-          </div>
+          <><button className="mobile-bank-menu-backdrop" type="button" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}/><div className="mobile-bank-menu" id="mobile-bank-menu">
+            <div className="mobile-bank-menu-title"><span>{t("Explore banking")}</span><small>{brand?.bankName??"Online banking"}</small></div>
+            <div className="mobile-bank-menu-links"><Link href="#personal" onClick={()=>setMenuOpen(false)}>{t("Personal banking")}<ArrowRight size={15}/></Link><Link href="#borrowing" onClick={()=>setMenuOpen(false)}>{t("Borrowing")}<ArrowRight size={15}/></Link><Link href="#business" onClick={()=>setMenuOpen(false)}>{t("Business banking")}<ArrowRight size={15}/></Link><Link href="#security" onClick={()=>setMenuOpen(false)}>{t("Security")}<ArrowRight size={15}/></Link></div>
+            <div className="mobile-bank-menu-actions"><Link href="/login" onClick={()=>setMenuOpen(false)}><LockKeyhole size={15}/>{t("Customer sign in")}</Link><Link href="/open-account" onClick={()=>setMenuOpen(false)}>{t("Open an account")}<ArrowRight size={15}/></Link></div>
+          </div></>
         )}
       </header>
 
@@ -253,7 +264,7 @@ export default function HomePage() {
       </section>
 
       <section className="product-dock" aria-label="Explore products" data-reveal>
-        <div className="product-dock-heading"><small>{t(`EXPLORE ${brand?.shortName??"NORTHSTAR"}`)}</small><b>{t("What can we help you with?")}</b></div>
+        <div className="product-dock-heading"><small>{t(`EXPLORE ${brand?.shortName??"ONLINE BANKING"}`)}</small><b>{t("What can we help you with?")}</b></div>
         {visibleProducts.map(({icon:Icon,label,copy,href})=>(
           <Link href={href} className="product-dock-item" key={label}>
             <span><Icon size={19}/></span>
@@ -267,7 +278,7 @@ export default function HomePage() {
         <div className="bank-section-heading">
           <span className="bank-kicker dark">PERSONAL BANKING</span>
           <h2>One financial home for everyday life.</h2>
-          <p>From your first deposit to long-term savings, {brand?.bankName??"Northstar Bank"} keeps every account easy to understand and simple to manage.</p>
+          <p>From your first deposit to long-term savings, {brand?.bankName??"your bank"} keeps every account easy to understand and simple to manage.</p>
         </div>
         <div className="bank-product-grid">
           {websiteSettings.showChecking&&<article className="bank-product-card featured">
@@ -348,14 +359,14 @@ export default function HomePage() {
       </section>
 
       <section className="bank-final-cta" data-reveal>
-        <div><span className="bank-kicker">READY WHEN YOU ARE</span><h2>Start your {brand?.bankName??"Northstar Bank"} experience.</h2><p>Open an account and manage everyday banking.</p></div>
+        <div><span className="bank-kicker">READY WHEN YOU ARE</span><h2>Start your {brand?.bankName??"digital banking"} experience.</h2><p>Open an account and manage everyday banking.</p></div>
         <Link href="/open-account" className="button bank-button-light">{t("Open an account")} <ArrowRight size={16}/></Link>
       </section>
 
       <footer className="bank-footer">
         <div className="bank-footer-main">
           <div className="bank-footer-brand">
-            <Link href="/" className="brand" aria-label={`${brand?.bankName??"Northstar"} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo dark-surface-logo"><img src={brand.logoUrl} alt=""/><img className="brand-color-layer" src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"NORTHSTAR"}</>}</Link>
+            <Link href="/" className="brand" aria-label={`${brand?.bankName??"Online banking"} home`}>{brand?.logoUrl?<span className="brand-mark uploaded-brand-logo dark-surface-logo"><img src={brand.logoUrl} alt=""/><img className="brand-color-layer" src={brand.logoUrl} alt=""/></span>:<><span className="brand-mark"><Sparkles size={18}/></span>{brand?.shortName??"ONLINE BANKING"}</>}</Link>
             <p>Personal and business banking designed around clarity, control, and dependable service.</p>
           </div>
           <div><b>{t("Personal")}</b><Link href="#personal">{t("Checking")}</Link><Link href="#personal">{t("Savings")}</Link><Link href="/app/cards">{t("Virtual cards")}</Link><Link href="#borrowing">{t("Loans")}</Link></div>
@@ -364,8 +375,8 @@ export default function HomePage() {
           <div><b>{t("Get started")}</b><Link href="/open-account">{t("Open an account")}</Link><Link href="/login">{t("Customer sign in")}</Link></div>
         </div>
         <div className="bank-footer-legal">
-          <p>{t("Privacy")} · {t("Security")} · {t("Accessibility")} · <Link href="/simulation-disclosure">{t("Compliance disclosure")}</Link></p>
-          <span>© 2026 {brand?.bankName??"Northstar"}. All rights reserved.</span>
+          <p>{t("Privacy")} · {t("Security")} · {t("Accessibility")} </Link></p>
+          <span>© {new Date().getFullYear()} {brand?.bankName??"Online Banking"}. All rights reserved.</span>
         </div>
       </footer>
     </main>

@@ -552,3 +552,55 @@ test("security hardening protects admin reads, request boundaries, and transfer 
   assert.match(caddy, /max_size 12MB/i);
   assert.doesNotMatch(brandUpload, /image\/svg\+xml/i);
 });
+
+test("active branding is server hydrated and website page titles are managed", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const provider = await readFile(new URL("../components/usePublicBrand.ts", import.meta.url), "utf8");
+  const homepage = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  assert.match(layout, /getActiveSimulationBrand/);
+  assert.match(layout, /<PublicBrandProvider initialBrand=\{initialBrand\}>/);
+  assert.match(layout, /generateMetadata/);
+  assert.match(provider, /useState<PublicBrand \| null>\(initialBrand\)/);
+  assert.match(homepage, /mobile-bank-menu-backdrop/);
+  assert.match(homepage, /document\.title=websiteSettings\.pageTitle/);
+  assert.doesNotMatch(homepage, /brand\?\.shortName\?\?"NORTHSTAR"/);
+  assert.match(shell, /BROWSER PAGE TITLE/);
+  assert.match(service, /WEBSITE_PAGE_TITLE_INVALID/);
+});
+
+test("account applications retain product choice through KYC approval", async () => {
+  const migration = await readFile(new URL("../db/migrations/0016_admin_identity_notifications_account_preferences.sql", import.meta.url), "utf8");
+  const signup = await readFile(new URL("../components/CustomerSignupForm.tsx", import.meta.url), "utf8");
+  const signupRoute = await readFile(new URL("../app/api/customer/signup/route.ts", import.meta.url), "utf8");
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  assert.match(migration, /sim_customer_account_preferences/);
+  assert.match(migration, /'CHECKING','SAVINGS','INVESTMENT'/);
+  assert.match(signup, /ACCOUNT TYPE/);
+  assert.match(signup, /<option value="INVESTMENT">Investment account<\/option>/);
+  assert.match(signupRoute, /requestedAccountType:\s*String\(verified\.payload\.accountType/);
+  assert.match(service, /customer\.requestedAccountType/);
+  assert.match(service, /sim_customer_account_preferences/);
+});
+
+test("administrator credentials and Discord alerts are persistent and protected", async () => {
+  const migration = await readFile(new URL("../db/migrations/0016_admin_identity_notifications_account_preferences.sql", import.meta.url), "utf8");
+  const adminSession = await readFile(new URL("../app/api/admin/session/route.ts", import.meta.url), "utf8");
+  const adminApi = await readFile(new URL("../app/admin/api/banking/route.ts", import.meta.url), "utf8");
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
+  assert.match(migration, /sim_admin_identity/);
+  assert.match(migration, /sim_admin_notification_settings/);
+  assert.match(adminSession, /authenticateSimulationAdmin/);
+  assert.match(adminApi, /ADMIN_IDENTITY_UPDATE/);
+  assert.match(adminApi, /DISCORD_SETTINGS_SAVE/);
+  assert.match(adminApi, /DISCORD_TEST/);
+  assert.match(service, /AES-GCM/);
+  assert.match(service, /allowed_mentions:\{parse:\[\]\}/);
+  assert.match(service, /\["discord\.com","discordapp\.com"\]/);
+  assert.doesNotMatch(service, /return \{[^}]*discordWebhookEncrypted/);
+  assert.match(shell, /Administrator identity/);
+  assert.match(shell, /Discord operations alerts/);
+  assert.match(shell, /CURRENT PASSWORD/);
+});

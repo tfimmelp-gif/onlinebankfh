@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSessionToken } from "../../../../server/auth/a
 import { validateMutationRequest } from "../../../../server/security/request";
 import {
   getSimulationWebsiteAdminState,
+  getSimulationAdminSettings,
   saveSimulationWebsiteRevision,
   type SimWebsiteContent,
 } from "../../../../server/d1/sim-bank";
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
       publicationStatus: body.publicationStatus!,
       scheduledFor: body.scheduledFor,
       changeReason: body.changeReason ?? "",
-      createdBy: "Sarah Okafor",
+      createdBy: (await getSimulationAdminSettings()).identity.displayName,
     }));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "WEBSITE_SETTINGS_SAVE_FAILED" }, { status: 422 });

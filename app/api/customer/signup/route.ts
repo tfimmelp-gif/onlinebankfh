@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     dateOfBirth?: string;
     phone?: string;
     idType?: string;
+    accountType?: "CHECKING" | "SAVINGS" | "INVESTMENT";
   };
   if (body.action === "VERIFY_EMAIL") {
     try {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
         email: verified.email,
         source: "CUSTOMER",
         emailVerifiedAt: verified.verifiedAt,
+        requestedAccountType: String(verified.payload.accountType??"CHECKING") as "CHECKING"|"SAVINGS"|"INVESTMENT",
       });
       const reference = `KYC-${new Date().toISOString().slice(2, 10).replaceAll("-", "")}-${profile.userId.slice(-6)}`;
       await queueSimulationEmailAlert({
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
         dateOfBirth: body.dateOfBirth ?? "",
         phone: body.phone ?? "",
         idType: body.idType ?? "",
+        accountType: body.accountType ?? "CHECKING",
       },
     });
     return NextResponse.json({ ...challenge, status: "EMAIL_VERIFICATION_REQUIRED" });

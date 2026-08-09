@@ -1494,6 +1494,12 @@ textarea:focus-visible { outline: 3px solid rgba(40,85,217,.25); outline-offset:
 .website-live-controls .maintenance-toggle { border-color: #ead2b3; background: #fff9ef; color: #7b5217; }
 .website-live-preview { position: sticky; top: 96px; }
 .website-preview-banner { padding: 10px 14px; background: #081929; color: #d7e1eb; font-size: 8px; font-weight: 800; letter-spacing: .08em; text-align: center; }
+.website-preview-browser { min-height: 32px; display: flex; align-items: center; gap: 5px; padding: 0 11px; border-bottom: 1px solid #dfe5eb; background: #f3f6f8; color: #637486; font-size: 8px; }
+.website-preview-browser i { width: 6px; height: 6px; border-radius: 50%; background: #c7d0d8; }
+.website-preview-browser i:first-child { background: #e0877f; }
+.website-preview-browser i:nth-child(2) { background: #e7bd68; }
+.website-preview-browser i:nth-child(3) { background: #80bd8e; }
+.website-preview-browser span { min-width: 0; margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .website-preview-hero { min-height: 285px; display: flex; flex-direction: column; justify-content: flex-end; padding: 27px; background: linear-gradient(145deg,#102741,#183c64); color: #fff; }
 .website-preview-hero small { color: #abc0ff; font-size: 8px; font-weight: 800; letter-spacing: .12em; }
 .website-preview-hero h3 { margin: 12px 0 10px; font-size: 28px; line-height: 1.05; letter-spacing: -.035em; }
@@ -1511,6 +1517,26 @@ textarea:focus-visible { outline: 3px solid rgba(40,85,217,.25); outline-offset:
 .website-revision-history td:nth-child(3) { max-width: 420px; color: #586d80; font-size: 10px; }
 @media(max-width:1050px){.website-management-layout{grid-template-columns:1fr}.website-live-preview{position:static}.website-management-metrics{grid-template-columns:1fr 1fr}.website-management-metrics>div:last-child{grid-column:1/-1}}
 @media(max-width:620px){.website-management-metrics{grid-template-columns:1fr}.website-management-metrics>div:last-child{grid-column:auto}.website-revision-history th:nth-child(3),.website-revision-history td:nth-child(3){display:none}}
+
+.admin-system-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; align-items: start; }
+.admin-system-grid > form { gap: 14px; }
+.password-policy { display: block; margin-top: -3px; color: #687b8e; font-size: 9px; line-height: 1.55; }
+.discord-enable-control { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; padding: 13px; border: 1px solid #d7e3eb; border-radius: 10px; background: #f6fafc; cursor: pointer; }
+.discord-enable-control input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: #2368a0; }
+.discord-enable-control span { display: grid; gap: 4px; }
+.discord-enable-control b { color: #203a51; font-size: 11px; }
+.discord-enable-control small { color: #6f8192; font-size: 9px; line-height: 1.45; }
+.discord-delivery-state { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.discord-delivery-state > div { min-width: 0; display: grid; gap: 4px; padding: 11px; border: 1px solid #e0e6eb; border-radius: 9px; background: #fbfcfd; }
+.discord-delivery-state .wide { grid-column: 1/-1; }
+.discord-delivery-state span { color: #718294; font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.discord-delivery-state b { overflow-wrap: anywhere; color: #263f55; font-size: 10px; }
+.system-setting-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.system-setting-actions .secondary-action { min-height: 39px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid #cbd7e1; border-radius: 7px; background: #fff; color: #29445a; font-size: 10px; font-weight: 800; }
+.system-setting-actions .admin-execute { width: auto; margin: 0; }
+.system-maintenance-card { margin-top: 14px; }
+@media(max-width:1050px){.admin-system-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.discord-delivery-state{grid-template-columns:1fr}.discord-delivery-state .wide{grid-column:auto}.system-setting-actions{align-items:stretch;flex-direction:column-reverse}.system-setting-actions .secondary-action,.system-setting-actions .admin-execute{width:100%}}
 
 .signup-confirmation{display:grid;gap:12px;justify-items:start;padding:22px;border:1px solid #cfe0ee;border-radius:16px;background:#f4f9fd;color:#16324a}
 .signup-confirmation svg{color:#16845b}.signup-confirmation h3{font-size:22px;margin:0}.signup-confirmation p{margin:0;line-height:1.6}.signup-confirmation strong{font-family:monospace;background:#e5f0f8;padding:8px 12px;border-radius:8px;letter-spacing:.04em}

@@ -57,6 +57,7 @@ import {
 import { formatMoney, useBankingData, type BankingTransferRequest } from "./useBankingData";
 import { LiveChatPanel } from "./LiveChatPanel";
 import { useLanguage } from "./LanguageProvider";
+import { usePublicBrand } from "./usePublicBrand";
 
 const customerNav = [
   { href: "/app", label: "Overview", icon: CircleGauge },
@@ -124,7 +125,7 @@ function LivePortalDateTime({ isAdmin }: { isAdmin: boolean }) {
     const timer = window.setInterval(update, 1_000);
     return () => window.clearInterval(timer);
   }, []);
-  if (!now) return <>{isAdmin ? `Northstar · ${t("MFA verified")}` : t("Loading current date and time…")}</>;
+  if (!now) return <>{isAdmin ? t("MFA verified") : t("Loading current date and time…")}</>;
   const current = new Intl.DateTimeFormat(localeTag, {
     weekday: "long",
     month: "long",
@@ -180,12 +181,15 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
   const isAdmin = mode === "admin";
   const [customerMenuOpen,setCustomerMenuOpen] = useState(false);
   const [mobileNavOpen,setMobileNavOpen] = useState(false);
-  const { customers: sessionCustomers,brandProfiles } = useBankingData(isAdmin ? "admin" : "customer");
-  const activeBrand=brandProfiles.find((brand)=>brand.active)??brandProfiles[0];
+  const { customers: sessionCustomers,brandProfiles,adminSettings } = useBankingData(isAdmin ? "admin" : "customer");
+  const publicBrand=usePublicBrand();
+  const activeBrand=brandProfiles.find((brand)=>brand.active)??brandProfiles[0]??publicBrand;
   const signedInCustomer = sessionCustomers[0];
   const customerName = signedInCustomer ? `${signedInCustomer.firstName} ${signedInCustomer.lastName}`.trim() : "Customer";
   const customerInitials = signedInCustomer ? `${signedInCustomer.firstName[0] ?? ""}${signedInCustomer.lastName[0] ?? ""}`.toUpperCase() : "CU";
   const customerNumber = signedInCustomer?.userId ?? "Loading";
+  const adminName=adminSettings?.identity.displayName??"Operations Admin";
+  const adminInitials=adminName.split(/\s+/).slice(0,2).map((part)=>part[0]??"").join("").toUpperCase()||"OA";
   const nav = (isAdmin ? adminNav : customerNav) as NavItem[];
   const rawTitle = section ? section.replaceAll("-", " ") : isAdmin ? "Operations center" : "Overview";
   const title = t(rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1));
@@ -208,7 +212,7 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
     <main className={`portal-page ${isAdmin ? "admin-page" : ""}`} style={activeBrand?{"--blue":activeBrand.primaryColor} as React.CSSProperties:undefined}>
       <div className="portal-shell">
         <aside className="portal-sidebar">
-          <Link href={isAdmin?"/admin":"/app"} className="portal-brand" aria-label={`${activeBrand?.bankName??"Northstar Bank"} ${isAdmin?"operations":"dashboard"}`}>{activeBrand?.logoUrl?<span className="portal-brand-logo dark-surface-logo"><img src={activeBrand.logoUrl} alt=""/><img className="brand-color-layer" src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"NORTHSTAR"}</>}</Link>
+          <Link href={isAdmin?"/admin":"/app"} className="portal-brand" aria-label={`${activeBrand?.bankName??"Online Banking"} ${isAdmin?"operations":"dashboard"}`}>{activeBrand?.logoUrl?<span className="portal-brand-logo dark-surface-logo"><img src={activeBrand.logoUrl} alt=""/><img className="brand-color-layer" src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"ONLINE BANKING"}</>}</Link>
           <nav className="portal-nav">
             {nav.map((item, index) =>
               item.section ? <div className="nav-section" key={`${item.section}-${index}`}>{t(item.section)}</div> : (
@@ -219,8 +223,8 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
             )}
           </nav>
           <div className="portal-profile">
-            <span>{isAdmin ? "SO" : customerInitials}</span>
-            <div><b>{isAdmin ? "Sarah Okafor" : customerName}</b><small>{isAdmin ? "Operations admin" : `Customer · ${customerNumber}`}</small></div>
+            <span>{isAdmin ? adminInitials : customerInitials}</span>
+            <div><b>{isAdmin ? adminName : customerName}</b><small>{isAdmin ? "Operations admin" : `Customer · ${customerNumber}`}</small></div>
             {isAdmin
               ? <ChevronDown size={13}/>
               : <button type="button" className="portal-profile-logout" aria-label="Log out of customer portal" title="Log out" onClick={signOutCustomer}><LogOut size={14}/></button>}
@@ -229,7 +233,7 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
         <section className="portal-main">
           <header className="portal-header">
             <button type="button" className="mobile-admin-nav-trigger" aria-label={t(isAdmin?"Open admin navigation":"Open customer navigation")} aria-expanded={mobileNavOpen} onClick={()=>setMobileNavOpen(true)}><Menu size={19}/></button>
-            {!isAdmin&&<Link href="/app" className="mobile-customer-brand" aria-label={`${activeBrand?.bankName??"Northstar Bank"} dashboard`}>{activeBrand?.logoUrl?<img src={activeBrand.logoUrl} alt={activeBrand.bankName}/>:<><Sparkles size={15}/><b>{activeBrand?.shortName??"NORTHSTAR"}</b></>}</Link>}
+            {!isAdmin&&<Link href="/app" className="mobile-customer-brand" aria-label={`${activeBrand?.bankName??"Online Banking"} dashboard`}>{activeBrand?.logoUrl?<img src={activeBrand.logoUrl} alt={activeBrand.bankName}/>:<><Sparkles size={15}/><b>{activeBrand?.shortName??"ONLINE BANKING"}</b></>}</Link>}
             <div className="portal-header-title"><h1>{title}</h1><p><LivePortalDateTime isAdmin={isAdmin}/></p></div>
             <div className="header-tools"><button aria-label="Search"><Search size={15} /></button><button aria-label="Notifications"><Bell size={15} /></button>{isAdmin ? <button aria-label="Sign out" onClick={signOutAdmin}><LogOut size={15}/></button> : <div className="customer-menu-wrap"><button className="customer-menu-trigger" aria-label="Customer menu" aria-expanded={customerMenuOpen} onClick={()=>setCustomerMenuOpen((open)=>!open)}><span>{customerInitials}</span><ChevronDown size={14}/></button>{customerMenuOpen&&<div className="customer-menu" role="menu"><div><b>{customerName}</b><small>Customer {customerNumber}</small></div><Link role="menuitem" href="/app/profile" onClick={()=>setCustomerMenuOpen(false)}><Users size={14}/>Profile & identity</Link><Link role="menuitem" href="/app/security" onClick={()=>setCustomerMenuOpen(false)}><LockKeyhole size={14}/>Security center</Link><Link role="menuitem" href="/app/statements" onClick={()=>setCustomerMenuOpen(false)}><FileText size={14}/>Statements</Link><Link role="menuitem" href="/app/support" onClick={()=>setCustomerMenuOpen(false)}><Headphones size={14}/>Support</Link><button type="button" role="menuitem" className="customer-menu-logout" onClick={signOutCustomer}><LogOut size={14}/>Log out</button></div>}</div>}</div>
           </header>
@@ -241,13 +245,13 @@ export function PortalShell({ mode, section }: { mode: "customer" | "admin"; sec
       {mobileNavOpen&&<div className="mobile-admin-nav-backdrop" role="presentation" onClick={()=>setMobileNavOpen(false)}>
         <aside className={`mobile-admin-nav-drawer ${isAdmin?"admin-mobile-nav":"customer-mobile-nav"}`} role="dialog" aria-modal="true" aria-label={t(isAdmin?"Admin navigation":"Customer navigation")} onClick={(event)=>event.stopPropagation()}>
           <div className="mobile-admin-nav-head">
-            <Link href={isAdmin?"/admin":"/app"} className="portal-brand" aria-label={`${activeBrand?.bankName??"Northstar Bank"} ${isAdmin?"operations":"dashboard"}`} onClick={()=>setMobileNavOpen(false)}>{activeBrand?.logoUrl?<span className="portal-brand-logo dark-surface-logo"><img src={activeBrand.logoUrl} alt=""/><img className="brand-color-layer" src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"NORTHSTAR"}</>}</Link>
+            <Link href={isAdmin?"/admin":"/app"} className="portal-brand" aria-label={`${activeBrand?.bankName??"Online Banking"} ${isAdmin?"operations":"dashboard"}`} onClick={()=>setMobileNavOpen(false)}>{activeBrand?.logoUrl?<span className="portal-brand-logo dark-surface-logo"><img src={activeBrand.logoUrl} alt=""/><img className="brand-color-layer" src={activeBrand.logoUrl} alt=""/></span>:<><span><Sparkles size={16}/></span>{activeBrand?.shortName??"ONLINE BANKING"}</>}</Link>
             <button type="button" aria-label={t(isAdmin?"Close admin navigation":"Close customer navigation")} onClick={()=>setMobileNavOpen(false)}><X size={19}/></button>
           </div>
           <nav className="portal-nav">
             {nav.map((item,index)=>item.section?<div className="nav-section" key={`${item.section}-${index}`}>{t(item.section)}</div>:<Link key={item.href} href={item.href!} className={pathname===item.href?"active":""} onClick={()=>setMobileNavOpen(false)}>{item.icon&&<item.icon size={17}/>} {t(item.label??"")}</Link>)}
           </nav>
-          <div className="mobile-admin-account"><span>{isAdmin?"SO":customerInitials}</span><div><b>{isAdmin?"Sarah Okafor":customerName}</b><small>{isAdmin?t("Operations admin"):`Customer · ${customerNumber}`}</small></div><button type="button" aria-label={t("Sign out")} onClick={isAdmin?signOutAdmin:signOutCustomer}><LogOut size={16}/></button></div>
+          <div className="mobile-admin-account"><span>{isAdmin?adminInitials:customerInitials}</span><div><b>{isAdmin?adminName:customerName}</b><small>{isAdmin?t("Operations admin"):`Customer · ${customerNumber}`}</small></div><button type="button" aria-label={t("Sign out")} onClick={isAdmin?signOutAdmin:signOutCustomer}><LogOut size={16}/></button></div>
         </aside>
       </div>}
     </main>
@@ -624,6 +628,19 @@ function AdminProcessingFeesWorkspace(){
   return <><div className="overview-head"><div><h2>Processing fee calculator</h2><p>Configure fixed-plus-percentage fee rules with minimum and maximum caps.</p></div></div>{notice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{notice}</span><button onClick={()=>setNotice("")}>Dismiss</button></div>}<div className="fee-workspace"><form className="section-card form-grid" onSubmit={save}><div className="field"><label>TRANSFER TYPE</label><select value={rail} onChange={e=>setRail(e.target.value as typeof rail)}>{["INTERNAL","P2P","ACH","DOMESTIC_WIRE","INTERNATIONAL_WIRE"].map(item=><option key={item} value={item}>{item.replaceAll("_"," ")}</option>)}</select></div><div className="form-row"><div className="field"><label>PERCENTAGE (BASIS POINTS)</label><input type="number" min="0" max="10000" value={percentageBps} onChange={e=>setPercentageBps(Number(e.target.value))}/><small>100 basis points = 1%</small></div><div className="field"><label>FIXED FEE (USD)</label><input type="number" min="0" step="0.01" value={fixed} onChange={e=>setFixed(e.target.value)}/></div></div><div className="form-row"><div className="field"><label>MINIMUM FEE</label><input type="number" min="0" step="0.01" value={minimum} onChange={e=>setMinimum(e.target.value)}/></div><div className="field"><label>MAXIMUM FEE (OPTIONAL)</label><input type="number" min="0" step="0.01" value={maximum} onChange={e=>setMaximum(e.target.value)}/></div></div><button className="admin-execute">Save fee rule</button></form><aside className="section-card fee-calculator"><div className="section-title"><div><h2>Calculation preview</h2><p>Fee = percentage + fixed amount, bounded by configured caps.</p></div></div><div className="field"><label>PAYMENT AMOUNT (USD)</label><input type="number" min="0" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/></div><dl><div><dt>Payment amount</dt><dd>{formatMoney(amountMinor)}</dd></div><div><dt>Percentage component</dt><dd>{formatMoney(Math.round(amountMinor*percentageBps/10000))}</dd></div><div><dt>Fixed component</dt><dd>{formatMoney(Math.round(Number(fixed||0)*100))}</dd></div><div className="fee-total"><dt>Processing fee</dt><dd>{formatMoney(feeMinor)}</dd></div><div><dt>Total debit preview</dt><dd>{formatMoney(amountMinor+feeMinor)}</dd></div></dl></aside></div></>;
 }
 
+function AdminSystemWorkspace() {
+  const {adminSettings,mutate,refresh}=useBankingData();
+  const [displayName,setDisplayName]=useState("");const [email,setEmail]=useState("");
+  const [currentPassword,setCurrentPassword]=useState("");const [newPassword,setNewPassword]=useState("");const [confirmPassword,setConfirmPassword]=useState("");
+  const [discordEnabled,setDiscordEnabled]=useState(false);const [discordWebhookUrl,setDiscordWebhookUrl]=useState("");
+  const [identityNotice,setIdentityNotice]=useState("");const [discordNotice,setDiscordNotice]=useState("");const [error,setError]=useState("");const [submitting,setSubmitting]=useState(false);
+  useEffect(()=>{if(!adminSettings)return;const frame=window.requestAnimationFrame(()=>{setDisplayName(adminSettings.identity.displayName);setEmail(adminSettings.identity.email);setDiscordEnabled(adminSettings.discordEnabled);});return()=>window.cancelAnimationFrame(frame);},[adminSettings]);
+  async function saveIdentity(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setError("");setIdentityNotice("");if(newPassword!==confirmPassword){setError("New password confirmation does not match.");return;}setSubmitting(true);try{await mutate({action:"ADMIN_IDENTITY_UPDATE",displayName,email,currentPassword,newPassword:newPassword||undefined});setCurrentPassword("");setNewPassword("");setConfirmPassword("");setIdentityNotice("Administrator identity and sign-in credentials were updated.");await refresh();}catch(failure){setError(failure instanceof Error?failure.message.replaceAll("_"," "):"Admin identity update failed");}finally{setSubmitting(false);}}
+  async function saveDiscord(event:React.FormEvent<HTMLFormElement>){event.preventDefault();setError("");setDiscordNotice("");setSubmitting(true);try{await mutate({action:"DISCORD_SETTINGS_SAVE",discordEnabled,discordWebhookUrl:discordWebhookUrl||undefined});setDiscordWebhookUrl("");setDiscordNotice(discordEnabled?"Discord alerts are active.":"Discord alerts are disabled.");await refresh();}catch(failure){setError(failure instanceof Error?failure.message.replaceAll("_"," "):"Discord settings update failed");}finally{setSubmitting(false);}}
+  async function testDiscord(){setError("");setDiscordNotice("");setSubmitting(true);try{await mutate({action:"DISCORD_TEST"});setDiscordNotice("A test notification was sent to Discord.");await refresh();}catch(failure){setError(failure instanceof Error?failure.message.replaceAll("_"," "):"Discord test failed");}finally{setSubmitting(false);}}
+  return <><div className="overview-head"><div><h2>System & administrator settings</h2><p>Manage the staff identity, sign-in password, notification channel, and service controls.</p></div><button className="primary-action" type="button" onClick={()=>void refresh()}><RefreshCw size={14}/>Refresh</button></div>{error&&<div className="auth-error">{error}</div>}<div className="admin-system-grid"><form className="section-card form-grid" onSubmit={saveIdentity}><div className="section-title"><div><h2>Administrator identity</h2><p>Changes apply to the next staff sign-in and future audit attribution.</p></div><span className="status-pill">Protected</span></div>{identityNotice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{identityNotice}</span></div>}<div className="field"><label>ADMINISTRATOR NAME</label><input value={displayName} onChange={event=>setDisplayName(event.target.value)} minLength={2} maxLength={100} autoComplete="name" required/></div><div className="field"><label>ADMINISTRATOR EMAIL</label><input type="email" value={email} onChange={event=>setEmail(event.target.value)} autoComplete="email" required/></div><div className="field"><label>CURRENT PASSWORD</label><input type="password" value={currentPassword} onChange={event=>setCurrentPassword(event.target.value)} autoComplete="current-password" required/></div><div className="form-row"><div className="field"><label>NEW PASSWORD (OPTIONAL)</label><input type="password" value={newPassword} onChange={event=>setNewPassword(event.target.value)} autoComplete="new-password" minLength={12}/></div><div className="field"><label>CONFIRM NEW PASSWORD</label><input type="password" value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={12}/></div></div><small className="password-policy">Use at least 12 characters with uppercase, lowercase, number, and symbol. Leave both new-password fields blank to change only the name or email.</small><button className="admin-execute" disabled={submitting||!currentPassword}>Save administrator settings</button></form><form className="section-card form-grid" onSubmit={saveDiscord}><div className="section-title"><div><h2>Discord operations alerts</h2><p>Send customer and operational activity notifications to a private Discord channel.</p></div><span className={`status-pill ${discordEnabled?"":"warn"}`}>{discordEnabled?"Active":"Disabled"}</span></div>{discordNotice&&<div className="operation-notice"><CheckCircle2 size={15}/><span>{discordNotice}</span></div>}<label className="discord-enable-control"><input type="checkbox" checked={discordEnabled} onChange={event=>setDiscordEnabled(event.target.checked)}/><span><b>Enable Discord webhook alerts</b><small>Verification and password-reset codes are never included.</small></span></label><div className="field"><label>DISCORD WEBHOOK URL</label><input type="password" value={discordWebhookUrl} onChange={event=>setDiscordWebhookUrl(event.target.value)} placeholder={adminSettings?.discordConfigured?"Webhook securely stored · enter a new URL to replace it":"https://discord.com/api/webhooks/…"} autoComplete="off"/><small>The secret URL is encrypted at rest and is never returned to the browser.</small></div><div className="discord-delivery-state"><div><span>Configuration</span><b>{adminSettings?.discordConfigured?"Webhook stored":"Not configured"}</b></div><div><span>Last delivery</span><b>{adminSettings?.lastDeliveryAt?new Date(adminSettings.lastDeliveryAt).toLocaleString():"No delivery yet"}</b></div>{adminSettings?.lastError&&<div className="wide"><span>Last error</span><b>{adminSettings.lastError}</b></div>}</div><div className="system-setting-actions"><button type="button" className="secondary-action" disabled={submitting||!adminSettings?.discordConfigured||!discordEnabled} onClick={()=>void testDiscord()}><Bell size={14}/>Send test</button><button className="admin-execute" disabled={submitting}>Save alert settings</button></div></form></div><section className="section-card system-maintenance-card"><div className="section-title"><div><h2>Service operations</h2><p>Run controlled maintenance tasks without changing administrator settings.</p></div></div><div className="system-actions"><button type="button"><BookOpen size={17}/><b>Reconcile ledger</b><span>Compare cached balances with posted entries</span></button><button type="button"><CircleDollarSign size={17}/><b>Run monthly interest</b><span>Preview eligible account yields</span></button><button type="button"><Server size={17}/><b>Retry outbox</b><span>Process failed statements and notifications</span></button></div></section></>;
+}
+
 function AdminContent({ section }: { section?: string }) {
   if (section === "customers") return <AdminCustomersWorkspace />;
   if (section === "accounts") return <AdminAccountsWorkspace />;
@@ -639,6 +656,7 @@ function AdminContent({ section }: { section?: string }) {
   if (section === "website") return <AdminWebsiteWorkspace />;
   if (section === "branding") return <AdminBrandingWorkspace />;
   if (section === "fees") return <AdminProcessingFeesWorkspace />;
+  if (section === "system") return <AdminSystemWorkspace />;
   if (section) return <AdminSection section={section} />;
   const customers = [
     ["Alex Morgan", "C-882104", "Active", "$104,020.62"],
@@ -1434,6 +1452,7 @@ function AdminStopCodesWorkspace() {
 }
 
 type WebsiteSettingsForm = {
+  pageTitle: string;
   heroHeading: string;
   heroMessage: string;
   simulationBanner: string;
@@ -1456,6 +1475,7 @@ type WebsiteRevisionSummary = {
 };
 
 const defaultWebsiteSettings: WebsiteSettingsForm = {
+  pageTitle: "Online Banking",
   heroHeading: "Build today. Plan for what comes next.",
   heroMessage: "Everyday accounts, flexible savings, and lending tools brought together in one clear digital experience.",
   simulationBanner: "COMPLIANCE INFORMATION IS AVAILABLE IN THE DISCLOSURE SECTION",
@@ -1560,6 +1580,7 @@ function AdminWebsiteWorkspace() {
         <div className="website-settings-body">
           <div className="form-row"><div className="field"><label>PUBLICATION STATUS</label><select value={publicationStatus} onChange={(event)=>setPublicationStatus(event.target.value as typeof publicationStatus)}><option value="PUBLISHED">Publish immediately</option><option value="DRAFT">Save draft</option><option value="SCHEDULED">Schedule publication</option></select></div><div className="field"><label>FALLBACK SUPPORT EMAIL</label><input type="email" value={settings.supportEmail} onChange={(event)=>updateSetting("supportEmail",event.target.value)} required/><small>{activeBrand?`The active ${activeBrand.shortName} brand currently publishes ${activeBrand.supportEmail}.`:"Used when no active brand profile is available."}</small></div></div>
           {publicationStatus==="SCHEDULED"&&<div className="field"><label>SCHEDULED DATE AND TIME</label><input type="datetime-local" min={minimumWebsiteSchedule} value={scheduledFor} onChange={(event)=>setScheduledFor(event.target.value)} required/></div>}
+          <div className="field"><label>BROWSER PAGE TITLE</label><input value={settings.pageTitle} onChange={(event)=>updateSetting("pageTitle",event.target.value)} minLength={3} maxLength={80} required/><small>Used in browser tabs, bookmarks, and link previews.</small></div>
           <div className="field"><label>LANDING PAGE HERO HEADING</label><input value={settings.heroHeading} onChange={(event)=>updateSetting("heroHeading",event.target.value)} minLength={5} maxLength={120} required/></div>
           <div className="field"><label>LANDING PAGE HERO MESSAGE</label><textarea value={settings.heroMessage} onChange={(event)=>updateSetting("heroMessage",event.target.value)} minLength={10} maxLength={500} required/></div>
           <div className="website-control-grid website-live-controls"><label><input type="checkbox" checked={settings.showChecking} onChange={(event)=>updateSetting("showChecking",event.target.checked)}/>Show checking product</label><label><input type="checkbox" checked={settings.showSavings} onChange={(event)=>updateSetting("showSavings",event.target.checked)}/>Show savings product</label><label><input type="checkbox" checked={settings.showLoans} onChange={(event)=>updateSetting("showLoans",event.target.checked)}/>Show loan products</label><label className="maintenance-toggle"><input type="checkbox" checked={settings.maintenanceMode} onChange={(event)=>updateSetting("maintenanceMode",event.target.checked)}/>Enable maintenance notice</label></div>
@@ -1570,7 +1591,7 @@ function AdminWebsiteWorkspace() {
       </form>
       <aside className="section-card website-live-preview">
         <div className="section-title"><div><h2>Live preview</h2><p>Preview of the editable landing-page content.</p></div></div>
-        <div className="website-preview-hero"><small>PERSONAL BANKING</small><h3>{settings.heroHeading}</h3><p>{settings.heroMessage}</p><span>Open an account <ArrowUpRight size={13}/></span></div>
+        <div className="website-preview-browser"><i/><i/><i/><span>{settings.pageTitle}</span></div><div className="website-preview-hero"><small>PERSONAL BANKING</small><h3>{settings.heroHeading}</h3><p>{settings.heroMessage}</p><span>Open an account <ArrowUpRight size={13}/></span></div>
         {settings.maintenanceMode&&<div className="website-preview-maintenance"><ShieldAlert size={16}/><div><b>Scheduled maintenance</b><span>Customers will see a service notice while the site remains accessible.</span></div></div>}
         <div className="website-preview-products">{settings.showChecking&&<span>Checking</span>}{settings.showSavings&&<span>Savings</span>}{settings.showLoans&&<span>Loans</span>}{!settings.showChecking&&!settings.showSavings&&!settings.showLoans&&<small>No public products selected</small>}</div>
         <div className="website-preview-support"><Headphones size={15}/><span>Support: {activeBrand?.supportEmail??settings.supportEmail}</span></div>

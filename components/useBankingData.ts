@@ -21,6 +21,7 @@ export type BankingCustomer = {
   passwordResetRequired:number;
   emailVerifiedAt:string|null;
   createdSource:"CUSTOMER"|"ADMIN";
+  requestedAccountType:"CHECKING"|"SAVINGS"|"INVESTMENT";
   createdAt:string;
 };
 
@@ -138,6 +139,7 @@ export type BankingKycDocument={id:string;userId:string;customerName:string;docu
 export type BankingCustomerActivity={id:string;userId:string;customerName:string;actionType:string;summary:string;occurredAt:string;status:string};
 export type BankingBrandProfile={id:string;bankName:string;shortName:string;supportEmail:string;logoUrl:string|null;primaryColor:string;active:number;updatedAt:string;updatedBy:string};
 export type BankingProcessingFeeRule={rail:"INTERNAL"|"P2P"|"ACH"|"DOMESTIC_WIRE"|"INTERNATIONAL_WIRE";percentageBps:number;fixedMinor:number;minimumMinor:number;maximumMinor:number|null;active:number;updatedAt:string;updatedBy:string};
+export type BankingAdminSettings={identity:{displayName:string;email:string;updatedAt:string;updatedBy:string};discordEnabled:boolean;discordConfigured:boolean;lastDeliveryAt:string|null;lastError:string|null;updatedAt:string};
 
 const fallbackAccounts: BankingAccount[] = [
   { id: "acct-checking-1842", userId: "C-882104", customerName: "Alex Morgan", type: "CHECKING", accountNumber: "7730191842", balanceMinor: 2568040 },
@@ -166,6 +168,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
   const [customerActivity,setCustomerActivity]=useState<BankingCustomerActivity[]>([]);
   const [brandProfiles,setBrandProfiles]=useState<BankingBrandProfile[]>([]);
   const [processingFeeRules,setProcessingFeeRules]=useState<BankingProcessingFeeRule[]>([]);
+  const [adminSettings,setAdminSettings]=useState<BankingAdminSettings|null>(null);
   const [loading, setLoading] = useState(true);
   const [error,setError]=useState("");
 
@@ -193,6 +196,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
         customerActivity?:BankingCustomerActivity[];
         brandProfiles?:BankingBrandProfile[];
         processingFeeRules?:BankingProcessingFeeRule[];
+        adminSettings?:BankingAdminSettings;
       };
       setCustomers(data.customers??[]);
       setAccounts(data.accounts);
@@ -209,6 +213,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
       setCustomerActivity(data.customerActivity??[]);
       setBrandProfiles(data.brandProfiles??[]);
       setProcessingFeeRules(data.processingFeeRules??[]);
+      setAdminSettings(data.adminSettings??null);
       setError("");
     } catch {
       setError("BANKING_READ_FAILED");
@@ -344,6 +349,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
     customerActivity,
     brandProfiles,
     processingFeeRules,
+    adminSettings,
     loading,
     refresh,
     mutate,

@@ -21,6 +21,10 @@ import {
   saveSimulationBrand,
   activateSimulationBrand,
   saveSimulationProcessingFeeRule,
+  getSimulationAdminSettings,
+  updateSimulationAdminIdentity,
+  saveSimulationDiscordSettings,
+  testSimulationDiscordWebhook,
 } from "../../../../server/d1/sim-bank";
 
 function cookieValue(request: Request) {
@@ -106,18 +110,27 @@ export async function POST(request: Request) {
     minimumMinor?:number;
     maximumMinor?:number|null;
     active?:number;
+    displayName?:string;
+    currentPassword?:string;
+    newPassword?:string;
+    discordEnabled?:boolean;
+    discordWebhookUrl?:string;
   };
   try {
-    if(body.action==="BRAND_SAVE")return NextResponse.json(await saveSimulationBrand({id:body.brandId,bankName:body.bankName??"",shortName:body.shortName??"",supportEmail:body.supportEmail??"",logoUrl:body.logoUrl,primaryColor:body.primaryColor??"#2855d9",updatedBy:"Sarah Okafor"}));
-    if(body.action==="BRAND_ACTIVATE")return NextResponse.json(await activateSimulationBrand(body.brandId??"","Sarah Okafor"));
-    if(body.action==="FEE_RULE_SAVE")return NextResponse.json(await saveSimulationProcessingFeeRule({rail:body.rail??"ACH",percentageBps:Number(body.percentageBps??0),fixedMinor:Number(body.fixedMinor??0),minimumMinor:Number(body.minimumMinor??0),maximumMinor:body.maximumMinor===null?null:Number(body.maximumMinor??0),active:Number(body.active??1),updatedBy:"Sarah Okafor"}));
-    if(body.action==="VIRTUAL_CARD_DECISION")return NextResponse.json(await decideSimulationVirtualCard({requestId:body.requestId??"",decision:body.cardDecision??"REJECT",reason:body.reason??"",decidedBy:"Sarah Okafor"}));
+    const actor=(await getSimulationAdminSettings()).identity.displayName;
+    if(body.action==="ADMIN_IDENTITY_UPDATE")return NextResponse.json(await updateSimulationAdminIdentity({displayName:body.displayName??"",email:body.email??"",currentPassword:body.currentPassword??"",newPassword:body.newPassword,updatedBy:actor}));
+    if(body.action==="DISCORD_SETTINGS_SAVE")return NextResponse.json(await saveSimulationDiscordSettings({enabled:Boolean(body.discordEnabled),webhookUrl:body.discordWebhookUrl,updatedBy:actor}));
+    if(body.action==="DISCORD_TEST")return NextResponse.json(await testSimulationDiscordWebhook());
+    if(body.action==="BRAND_SAVE")return NextResponse.json(await saveSimulationBrand({id:body.brandId,bankName:body.bankName??"",shortName:body.shortName??"",supportEmail:body.supportEmail??"",logoUrl:body.logoUrl,primaryColor:body.primaryColor??"#2855d9",updatedBy:actor}));
+    if(body.action==="BRAND_ACTIVATE")return NextResponse.json(await activateSimulationBrand(body.brandId??"",actor));
+    if(body.action==="FEE_RULE_SAVE")return NextResponse.json(await saveSimulationProcessingFeeRule({rail:body.rail??"ACH",percentageBps:Number(body.percentageBps??0),fixedMinor:Number(body.fixedMinor??0),minimumMinor:Number(body.minimumMinor??0),maximumMinor:body.maximumMinor===null?null:Number(body.maximumMinor??0),active:Number(body.active??1),updatedBy:actor}));
+    if(body.action==="VIRTUAL_CARD_DECISION")return NextResponse.json(await decideSimulationVirtualCard({requestId:body.requestId??"",decision:body.cardDecision??"REJECT",reason:body.reason??"",decidedBy:actor}));
     if (body.action === "CUSTOMER_STATUS_SET") {
       return NextResponse.json(await updateSimulationCustomerAccountStatus({
         userId:body.userId ?? "",
         status:body.accountStatus ?? "IN_REVIEW",
         reason:body.reason ?? "",
-        updatedBy:"Sarah Okafor",
+        updatedBy:actor,
       }));
     }
     if (body.action === "CUSTOMER_PASSWORD_RESET") {
@@ -125,7 +138,7 @@ export async function POST(request: Request) {
         userId:body.userId ?? "",
         temporaryPassword:body.temporaryPassword ?? "",
         reason:body.reason ?? "",
-        changedBy:"Sarah Okafor",
+        changedBy:actor,
       }));
     }
     if (body.action === "KYC_DECISION") {
@@ -133,7 +146,7 @@ export async function POST(request: Request) {
         userId:body.userId ?? "",
         decision:body.kycDecision ?? "REJECT",
         reason:body.reason ?? "",
-        decidedBy:"Sarah Okafor",
+        decidedBy:actor,
       }));
     }
     if (body.action === "CUSTOMER_CREATE") {
@@ -149,7 +162,7 @@ export async function POST(request: Request) {
       return NextResponse.json(await onboardSimulationStatement({
         accountId: body.accountId ?? "",
         reason: body.reason ?? "",
-        createdBy: "Sarah Okafor",
+        createdBy: actor,
         entries: body.entries ?? [],
       }));
     }
@@ -168,7 +181,7 @@ export async function POST(request: Request) {
         cryptoNetwork: body.cryptoNetwork,
         walletAddress: body.walletAddress,
         instructions: body.instructions ?? "",
-        updatedBy: "Sarah Okafor",
+        updatedBy: actor,
       }));
     }
     if (body.action === "DEPOSIT_REQUEST_DECIDE") {
@@ -176,7 +189,7 @@ export async function POST(request: Request) {
         requestId: body.requestId ?? "",
         decision: body.depositDecision ?? "REJECT",
         reason: body.reason ?? "",
-        decidedBy: "Sarah Okafor",
+        decidedBy: actor,
       }));
     }
     if (body.action === "STOP_CODE_CREATE") {
@@ -196,7 +209,7 @@ export async function POST(request: Request) {
     if (body.action === "COMPLIANCE_CODE_GENERATE") {
       return NextResponse.json(await generateSimulationComplianceCode({
         requestId: body.requestId ?? "",
-        generatedBy: "Sarah Okafor",
+        generatedBy: actor,
         reason: body.reason ?? "",
       }));
     }
@@ -204,7 +217,7 @@ export async function POST(request: Request) {
       return NextResponse.json(await generateSimulationStopCodeCredential({
         userId: body.userId ?? "",
         stopCode: body.stopCode ?? "",
-        generatedBy: "Sarah Okafor",
+        generatedBy: actor,
         reason: body.reason ?? "",
       }));
     }
@@ -213,7 +226,7 @@ export async function POST(request: Request) {
         requestId: body.requestId ?? "",
         decision: body.decision ?? "FLAG_REVIEW",
         reason: body.reason ?? "",
-        decidedBy: "Sarah Okafor",
+        decidedBy: actor,
       }));
     }
     if (body.action === "REVERSE") {

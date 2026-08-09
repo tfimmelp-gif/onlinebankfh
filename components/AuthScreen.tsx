@@ -13,8 +13,8 @@ export function AuthScreen({ kind }: { kind: "login" | "open" | "admin" }) {
   const isOpen = kind === "open";
   const isAdmin = kind === "admin";
   const brand=usePublicBrand();
-  const bankName=brand?.bankName??"Northstar Bank";
-  const shortName=brand?.shortName??"NORTHSTAR";
+  const bankName=brand?.bankName??"Online Banking";
+  const shortName=brand?.shortName??"ONLINE BANKING";
   return (
     <main className="auth-page" style={brand?{"--blue":brand.primaryColor} as React.CSSProperties:undefined}>
       <section className="auth-panel auth-copy">
@@ -36,7 +36,7 @@ export function AuthScreen({ kind }: { kind: "login" | "open" | "admin" }) {
           {isOpen && <div className="field"><label>IDENTIFICATION TYPE</label><select><option>Passport</option><option>Driver license</option><option>National ID</option></select></div>}
           <Link href={isAdmin ? "/admin" : "/app"} className="button button-blue">{isOpen ? "Submit application" : isAdmin ? "Continue to MFA" : "Sign in securely"} <ArrowRight size={16}/></Link>
         </form>}
-        <div className="auth-foot">{isOpen ? <>{t("Already have an account?")} <Link href="/login">{t("Sign in")}</Link></> : isAdmin ? <><Link href="/login">{t("Customer sign in")}</Link> · {t("Authorized staff only")}</> : <>{t("New to Northstar?")} <Link href="/open-account">{t("Open an account")}</Link></>}</div>
+        <div className="auth-foot">{isOpen ? <>{t("Already have an account?")} <Link href="/login">{t("Sign in")}</Link></> : isAdmin ? <><Link href="/login">{t("Customer sign in")}</Link> · {t("Authorized staff only")}</> : <>{t("New to online banking?")} <Link href="/open-account">{t("Open an account")}</Link></>}</div>
       </section>
     </main>
   );

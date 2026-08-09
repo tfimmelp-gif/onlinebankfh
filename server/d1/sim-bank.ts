@@ -130,6 +130,7 @@ export type SimCustomerDirectoryEntry = {
   passwordResetRequired: number;
   emailVerifiedAt: string | null;
   createdSource: "CUSTOMER" | "ADMIN";
+  requestedAccountType: "CHECKING" | "SAVINGS" | "INVESTMENT";
   createdAt: string;
 };
 
@@ -190,8 +191,11 @@ export type SimKycDocument={id:string;userId:string;customerName:string;document
 export type SimCustomerActivity={id:string;userId:string;customerName:string;actionType:string;summary:string;occurredAt:string;status:string};
 export type SimBrandProfile={id:string;bankName:string;shortName:string;supportEmail:string;logoUrl:string|null;primaryColor:string;active:number;updatedAt:string;updatedBy:string};
 export type SimProcessingFeeRule={rail:"INTERNAL"|"P2P"|"ACH"|"DOMESTIC_WIRE"|"INTERNATIONAL_WIRE";percentageBps:number;fixedMinor:number;minimumMinor:number;maximumMinor:number|null;active:number;updatedAt:string;updatedBy:string};
+export type SimAdminIdentity={displayName:string;email:string;updatedAt:string;updatedBy:string};
+export type SimAdminSettings={identity:SimAdminIdentity;discordEnabled:boolean;discordConfigured:boolean;lastDeliveryAt:string|null;lastError:string|null;updatedAt:string};
 
 export type SimWebsiteContent = {
+  pageTitle: string;
   heroHeading: string;
   heroMessage: string;
   simulationBanner: string;
@@ -215,6 +219,7 @@ export type SimWebsiteRevision = {
 };
 
 export const DEFAULT_SIM_WEBSITE_CONTENT: SimWebsiteContent = {
+  pageTitle: "Online Banking",
   heroHeading: "Build today. Plan for what comes next.",
   heroMessage: "Everyday accounts, flexible savings, and lending tools brought together in one clear digital experience.",
   simulationBanner: "COMPLIANCE INFORMATION IS AVAILABLE IN THE DISCLOSURE SECTION",
@@ -376,6 +381,11 @@ async function initializeSimulationBankOnce() {
       updated_at TEXT NOT NULL
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS sim_customer_directory_status_idx ON sim_customer_directory(status, created_at DESC)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sim_customer_account_preferences (
+      user_id TEXT PRIMARY KEY,
+      requested_account_type TEXT NOT NULL CHECK (requested_account_type IN ('CHECKING','SAVINGS','INVESTMENT')),
+      updated_at TEXT NOT NULL
+    )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS sim_customer_account_statuses (
       user_id TEXT PRIMARY KEY,
       status TEXT NOT NULL CHECK (status IN ('ACTIVE','INACTIVE','IN_REVIEW')),
@@ -672,6 +682,23 @@ async function initializeSimulationBankOnce() {
       ON sim_website_content_revisions(content_key) WHERE status = 'PUBLISHED'`),
     db.prepare(`CREATE INDEX IF NOT EXISTS sim_website_scheduled_idx
       ON sim_website_content_revisions(content_key, scheduled_for) WHERE status = 'SCHEDULED'`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sim_admin_identity (
+      id TEXT PRIMARY KEY CHECK (id = 'PRIMARY'),
+      display_name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      updated_by TEXT NOT NULL
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sim_admin_notification_settings (
+      id TEXT PRIMARY KEY CHECK (id = 'PRIMARY'),
+      discord_enabled INTEGER NOT NULL DEFAULT 0 CHECK (discord_enabled IN (0,1)),
+      discord_webhook_encrypted TEXT,
+      last_delivery_at TEXT,
+      last_error TEXT,
+      updated_at TEXT NOT NULL,
+      updated_by TEXT NOT NULL
+    )`),
   ]);
 
   const existing = await db.prepare("SELECT COUNT(*) AS count FROM sim_accounts").first<{ count: number }>();
@@ -825,6 +852,18 @@ async function initializeSimulationBankOnce() {
       VALUES ('C-882104', ?, 0, 'SYSTEM', ?)`)
       .bind(await derivePasswordHash(process.env.CUSTOMER_PASSWORD ?? (process.env.NODE_ENV==="production"?randomBase64(32):"Northstar!2026")), now)]);
   }
+  const existingAdmin=await db.prepare("SELECT id FROM sim_admin_identity WHERE id='PRIMARY'").first<{id:string}>();
+  if(!existingAdmin){
+    const adminEmail=process.env.ADMIN_EMAIL?.trim()||(process.env.NODE_ENV==="production"?null:"operations@northstar.test");
+    const adminPassword=process.env.ADMIN_PASSWORD||(process.env.NODE_ENV==="production"?null:"Northstar!2026");
+    if(!adminEmail||!adminPassword)throw new Error("STAFF_AUTH_NOT_CONFIGURED");
+    await db.batch([db.prepare(`INSERT INTO sim_admin_identity
+      (id,display_name,email,password_hash,updated_at,updated_by)
+      VALUES ('PRIMARY',?,?,?,?,?)`).bind(process.env.ADMIN_NAME?.trim()||"Operations Admin",adminEmail.toLowerCase(),await derivePasswordHash(adminPassword),now,"SYSTEM")]);
+  }
+  await db.batch([db.prepare(`INSERT OR IGNORE INTO sim_admin_notification_settings
+    (id,discord_enabled,discord_webhook_encrypted,last_delivery_at,last_error,updated_at,updated_by)
+    VALUES ('PRIMARY',0,NULL,NULL,NULL,?,'SYSTEM')`).bind(now)]);
 }
 
 export function initializeSimulationBank() {
@@ -833,6 +872,110 @@ export function initializeSimulationBank() {
     throw error;
   });
   return simulationBankInitialization;
+}
+
+function adminPasswordValid(password:string) {
+  return password.length>=12&&/[A-Z]/.test(password)&&/[a-z]/.test(password)&&/\d/.test(password)&&/[^A-Za-z0-9]/.test(password);
+}
+
+async function discordEncryptionKey() {
+  const configured=process.env.ADMIN_SESSION_SECRET;
+  if(!configured&&process.env.NODE_ENV==="production")throw new Error("ADMIN_SESSION_SECRET_REQUIRED");
+  const material=new TextEncoder().encode(`discord-webhook:${configured??"northstar-local-demo-session-secret-change-me"}`);
+  const digest=await crypto.subtle.digest("SHA-256",material);
+  return crypto.subtle.importKey("raw",digest,{name:"AES-GCM"},false,["encrypt","decrypt"]);
+}
+
+async function encryptDiscordWebhook(value:string) {
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const encrypted=await crypto.subtle.encrypt({name:"AES-GCM",iv},await discordEncryptionKey(),new TextEncoder().encode(value));
+  return `v1.${btoa(String.fromCharCode(...iv))}.${btoa(String.fromCharCode(...new Uint8Array(encrypted)))}`;
+}
+
+async function decryptDiscordWebhook(value:string) {
+  const [version,ivValue,cipherValue]=value.split(".");
+  if(version!=="v1"||!ivValue||!cipherValue)throw new Error("DISCORD_WEBHOOK_STORAGE_INVALID");
+  const iv=Uint8Array.from(atob(ivValue),character=>character.charCodeAt(0));
+  const encrypted=Uint8Array.from(atob(cipherValue),character=>character.charCodeAt(0));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},await discordEncryptionKey(),encrypted);
+  return new TextDecoder().decode(plain);
+}
+
+function validatedDiscordWebhook(value:string) {
+  try {
+    const url=new URL(value.trim());
+    const host=url.hostname.toLowerCase();
+    if(url.protocol!=="https:"||!["discord.com","discordapp.com"].includes(host)||!/^\/api\/webhooks\/[0-9]+\/[A-Za-z0-9._-]+$/.test(url.pathname))throw new Error();
+    return url.toString();
+  } catch { throw new Error("DISCORD_WEBHOOK_INVALID"); }
+}
+
+export async function getSimulationAdminSettings():Promise<SimAdminSettings> {
+  await initializeSimulationBank();
+  const row=await database().prepare(`SELECT i.display_name AS displayName,i.email,i.updated_at AS identityUpdatedAt,
+    i.updated_by AS updatedBy,n.discord_enabled AS discordEnabled,n.discord_webhook_encrypted AS discordWebhookEncrypted,
+    n.last_delivery_at AS lastDeliveryAt,n.last_error AS lastError,n.updated_at AS settingsUpdatedAt
+    FROM sim_admin_identity i JOIN sim_admin_notification_settings n ON n.id=i.id WHERE i.id='PRIMARY'`).first<{
+      displayName:string;email:string;identityUpdatedAt:string;updatedBy:string;discordEnabled:number;
+      discordWebhookEncrypted:string|null;lastDeliveryAt:string|null;lastError:string|null;settingsUpdatedAt:string;
+    }>();
+  if(!row)throw new Error("ADMIN_SETTINGS_NOT_FOUND");
+  return {identity:{displayName:row.displayName,email:row.email,updatedAt:row.identityUpdatedAt,updatedBy:row.updatedBy},discordEnabled:Boolean(row.discordEnabled),discordConfigured:Boolean(row.discordWebhookEncrypted),lastDeliveryAt:row.lastDeliveryAt,lastError:row.lastError,updatedAt:row.settingsUpdatedAt};
+}
+
+export async function authenticateSimulationAdmin(email:string,password:string) {
+  await initializeSimulationBank();
+  const row=await database().prepare(`SELECT display_name AS displayName,email,password_hash AS passwordHash,
+    updated_at AS updatedAt,updated_by AS updatedBy FROM sim_admin_identity WHERE id='PRIMARY'`).first<SimAdminIdentity&{passwordHash:string}>();
+  if(!row||row.email.toLowerCase()!==email.trim().toLowerCase()||!await passwordMatches(password,row.passwordHash))return null;
+  return {displayName:row.displayName,email:row.email,updatedAt:row.updatedAt,updatedBy:row.updatedBy};
+}
+
+export async function updateSimulationAdminIdentity(input:{displayName:string;email:string;currentPassword:string;newPassword?:string;updatedBy:string}) {
+  await initializeSimulationBank();
+  const current=await database().prepare("SELECT password_hash AS passwordHash FROM sim_admin_identity WHERE id='PRIMARY'").first<{passwordHash:string}>();
+  if(!current||!await passwordMatches(input.currentPassword,current.passwordHash))throw new Error("CURRENT_ADMIN_PASSWORD_INVALID");
+  const displayName=input.displayName.trim();const email=input.email.trim().toLowerCase();const newPassword=input.newPassword?.trim()||null;
+  if(displayName.length<2||displayName.length>100)throw new Error("ADMIN_NAME_INVALID");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("ADMIN_EMAIL_INVALID");
+  if(newPassword&&!adminPasswordValid(newPassword))throw new Error("NEW_ADMIN_PASSWORD_TOO_WEAK");
+  const updatedAt=new Date().toISOString();const passwordHash=newPassword?await derivePasswordHash(newPassword):current.passwordHash;
+  await database().batch([database().prepare(`UPDATE sim_admin_identity SET display_name=?,email=?,password_hash=?,updated_at=?,updated_by=? WHERE id='PRIMARY'`)
+    .bind(displayName,email,passwordHash,updatedAt,input.updatedBy)]);
+  return {displayName,email,updatedAt,passwordChanged:Boolean(newPassword)};
+}
+
+export async function saveSimulationDiscordSettings(input:{enabled:boolean;webhookUrl?:string;updatedBy:string}) {
+  await initializeSimulationBank();const db=database();
+  const existing=await db.prepare("SELECT discord_webhook_encrypted AS encrypted FROM sim_admin_notification_settings WHERE id='PRIMARY'").first<{encrypted:string|null}>();
+  const supplied=input.webhookUrl?.trim();const encrypted=supplied?await encryptDiscordWebhook(validatedDiscordWebhook(supplied)):existing?.encrypted??null;
+  if(input.enabled&&!encrypted)throw new Error("DISCORD_WEBHOOK_REQUIRED");
+  const updatedAt=new Date().toISOString();
+  await db.batch([db.prepare(`UPDATE sim_admin_notification_settings SET discord_enabled=?,discord_webhook_encrypted=?,last_error=NULL,updated_at=?,updated_by=? WHERE id='PRIMARY'`)
+    .bind(input.enabled?1:0,encrypted,updatedAt,input.updatedBy)]);
+  return {enabled:input.enabled,configured:Boolean(encrypted),updatedAt};
+}
+
+export async function sendSimulationDiscordAdminAlert(input:{title:string;summary:string;eventType:string}) {
+  await initializeSimulationBank();const db=database();
+  const settings=await db.prepare(`SELECT discord_enabled AS enabled,discord_webhook_encrypted AS encrypted FROM sim_admin_notification_settings WHERE id='PRIMARY'`)
+    .first<{enabled:number;encrypted:string|null}>();
+  if(!settings?.enabled||!settings.encrypted)return {status:"DISABLED" as const};
+  const now=new Date().toISOString();
+  try {
+    const response=await fetch(await decryptDiscordWebhook(settings.encrypted),{method:"POST",signal:AbortSignal.timeout(5000),headers:{"content-type":"application/json"},body:JSON.stringify({username:"Bank Operations",allowed_mentions:{parse:[]},embeds:[{title:input.title.slice(0,256),description:input.summary.slice(0,2000),color:2774489,timestamp:now,footer:{text:input.eventType.slice(0,100)}}]})});
+    if(!response.ok)throw new Error(`DISCORD_${response.status}`);
+    await db.batch([db.prepare("UPDATE sim_admin_notification_settings SET last_delivery_at=?,last_error=NULL WHERE id='PRIMARY'").bind(now)]);
+    return {status:"SENT" as const};
+  } catch(error) {
+    const message=error instanceof Error?error.message:"DISCORD_DELIVERY_FAILED";
+    await db.batch([db.prepare("UPDATE sim_admin_notification_settings SET last_error=? WHERE id='PRIMARY'").bind(message.slice(0,300))]);
+    return {status:"FAILED" as const,error:message};
+  }
+}
+
+export async function testSimulationDiscordWebhook() {
+  return sendSimulationDiscordAdminAlert({title:"Admin notification test",summary:"Discord alerts are connected and ready to report customer and operations activity.",eventType:"SYSTEM_TEST"});
 }
 
 async function sha256Hex(value:string) {
@@ -1009,6 +1152,9 @@ export async function postSimulationLiveChatMessage(input: {
   if (!body || body.length > 2000) throw new Error("LIVE_CHAT_MESSAGE_INVALID");
   await initializeSimulationBank();
   const db = database();
+  const assignedAdmin=input.senderKind === "STAFF"
+    ? input.senderName
+    : (await getSimulationAdminSettings()).identity.displayName;
   await ensureSimulationLiveChatConversation(input.userId);
   const conversation = await db.prepare("SELECT id FROM sim_live_chat_conversations WHERE user_id = ?")
     .bind(input.userId).first<{ id: string }>();
@@ -1029,11 +1175,14 @@ export async function postSimulationLiveChatMessage(input: {
     db.prepare(`UPDATE sim_live_chat_conversations SET status = ?, assigned_to = ?,
       updated_at = ? WHERE id = ?`).bind(
         input.senderKind === "CUSTOMER" ? "WAITING" : "OPEN",
-        input.senderKind === "STAFF" ? input.senderName : "Sarah Okafor",
+        assignedAdmin,
         message.createdAt,
         conversation.id,
       ),
   ]);
+  if(input.senderKind === "CUSTOMER"){
+    await sendSimulationDiscordAdminAlert({title:"New customer live-chat message",summary:`Customer ${input.userId} sent a support message.`,eventType:"SUPPORT"}).catch(()=>({status:"FAILED" as const}));
+  }
   return message;
 }
 
@@ -1148,10 +1297,11 @@ export async function saveSimulationProfilePhoto(userId: string, profilePhotoDat
 async function ensureActiveCustomersHaveInitialAccounts() {
   const db = database();
   const missing = await db.prepare(`SELECT d.user_id AS userId, d.first_name AS firstName,
-    d.last_name AS lastName FROM sim_customer_directory d
+    d.last_name AS lastName,COALESCE(p.requested_account_type,'CHECKING') AS requestedAccountType FROM sim_customer_directory d
     LEFT JOIN sim_accounts a ON a.user_id = d.user_id
+    LEFT JOIN sim_customer_account_preferences p ON p.user_id=d.user_id
     WHERE d.status = 'ACTIVE' AND a.id IS NULL`).all<{
-      userId:string; firstName:string; lastName:string;
+      userId:string; firstName:string; lastName:string; requestedAccountType:"CHECKING"|"SAVINGS"|"INVESTMENT";
     }>();
   if (!missing.results.length) return 0;
   const now = new Date().toISOString();
@@ -1160,9 +1310,9 @@ async function ensureActiveCustomersHaveInitialAccounts() {
     const accountNumber = `77${String(Math.floor(Math.random()*100_000_000)).padStart(8,"0")}`;
     return db.prepare(`INSERT INTO sim_accounts
       (id, user_id, customer_name, type, account_number, balance_minor, updated_at)
-      SELECT ?, ?, ?, 'CHECKING', ?, 0, ?
+      SELECT ?, ?, ?, ?, ?, 0, ?
       WHERE NOT EXISTS (SELECT 1 FROM sim_accounts WHERE user_id = ?)`)
-      .bind(accountId,customer.userId,`${customer.firstName} ${customer.lastName}`,accountNumber,now,customer.userId);
+      .bind(accountId,customer.userId,`${customer.firstName} ${customer.lastName}`,customer.requestedAccountType,accountNumber,now,customer.userId);
   }));
   return missing.results.length;
 }
@@ -1218,14 +1368,17 @@ export async function getSimulationBank() {
   await ensureActiveCustomersHaveDepositMethods();
   await processDueSimulationTransfers();
   const db = database();
+  const adminSettings=await getSimulationAdminSettings();
   const customers = await db.prepare(`SELECT d.user_id AS userId, d.first_name AS firstName,
     d.last_name AS lastName, d.email, d.status, d.email_verified_at AS emailVerifiedAt,
     d.created_source AS createdSource, d.created_at AS createdAt,
     COALESCE(s.status, 'IN_REVIEW') AS accountStatus,
-    COALESCE(c.password_reset_required, 1) AS passwordResetRequired
+    COALESCE(c.password_reset_required, 1) AS passwordResetRequired,
+    COALESCE(p.requested_account_type,'CHECKING') AS requestedAccountType
     FROM sim_customer_directory d
     LEFT JOIN sim_customer_account_statuses s ON s.user_id = d.user_id
     LEFT JOIN sim_customer_credentials c ON c.user_id = d.user_id
+    LEFT JOIN sim_customer_account_preferences p ON p.user_id = d.user_id
     ORDER BY d.created_at DESC`).all<SimCustomerDirectoryEntry>();
   const accounts = await db.prepare(`SELECT
     id, user_id AS userId, customer_name AS customerName, type,
@@ -1379,6 +1532,7 @@ export async function getSimulationBank() {
     kycDocuments:kycDocuments.results,
     brandProfiles:brandProfiles.results,
     processingFeeRules:processingFeeRules.results,
+    adminSettings,
     customerActivity,
   };
 }
@@ -1423,6 +1577,7 @@ export async function saveSimulationKycDocument(input:{userId:string;documentTyp
     (id,user_id,document_type,original_filename,media_type,byte_size,object_key,status,uploaded_at,reviewed_at,reviewed_by)
     VALUES (?,?,?,?,?,?,?,'UPLOADED',?,NULL,NULL)`)
     .bind(id,input.userId,input.documentType.trim(),input.originalFilename.trim(),input.mediaType,input.byteSize,input.objectKey,uploadedAt)]);
+  await sendSimulationDiscordAdminAlert({title:"KYC document uploaded",summary:`Customer ${input.userId} uploaded a ${input.documentType.trim()} document for review.`,eventType:"KYC"}).catch(()=>({status:"FAILED" as const}));
   return {id,status:"UPLOADED" as const,uploadedAt};
 }
 
@@ -1513,6 +1668,7 @@ function websiteContentFromJson(value: string): SimWebsiteContent {
   try {
     const parsed = JSON.parse(value) as Partial<SimWebsiteContent>;
     return {
+      pageTitle: typeof parsed.pageTitle === "string" ? parsed.pageTitle : DEFAULT_SIM_WEBSITE_CONTENT.pageTitle,
       heroHeading: typeof parsed.heroHeading === "string" ? parsed.heroHeading : DEFAULT_SIM_WEBSITE_CONTENT.heroHeading,
       heroMessage: typeof parsed.heroMessage === "string" ? parsed.heroMessage : DEFAULT_SIM_WEBSITE_CONTENT.heroMessage,
       simulationBanner: typeof parsed.simulationBanner === "string" ? parsed.simulationBanner : DEFAULT_SIM_WEBSITE_CONTENT.simulationBanner,
@@ -1609,6 +1765,7 @@ export async function saveSimulationWebsiteRevision(input: {
   createdBy: string;
 }) {
   const content: SimWebsiteContent = {
+    pageTitle: input.content.pageTitle?.trim(),
     heroHeading: input.content.heroHeading?.trim(),
     heroMessage: input.content.heroMessage?.trim(),
     simulationBanner: input.content.simulationBanner?.trim(),
@@ -1619,6 +1776,7 @@ export async function saveSimulationWebsiteRevision(input: {
     maintenanceMode: Boolean(input.content.maintenanceMode),
   };
   const reason = input.changeReason?.trim();
+  if (content.pageTitle.length < 3 || content.pageTitle.length > 80) throw new Error("WEBSITE_PAGE_TITLE_INVALID");
   if (content.heroHeading.length < 5 || content.heroHeading.length > 120) throw new Error("WEBSITE_HEADING_INVALID");
   if (content.heroMessage.length < 10 || content.heroMessage.length > 500) throw new Error("WEBSITE_MESSAGE_INVALID");
   if (content.simulationBanner.length < 10 || content.simulationBanner.length > 160) throw new Error("WEBSITE_BANNER_INVALID");
@@ -1736,6 +1894,9 @@ export async function queueSimulationEmailAlert(input: {
       VALUES (?, ?, ?, ?, ?, ?, 'QUEUED', NULL, NULL, ?, NULL)`)
       .bind(id, input.userId, email, input.eventType, subject, body, createdAt),
   ]);
+  if(!/(verification code|reset code|verify your)/i.test(subject)){
+    await sendSimulationDiscordAdminAlert({title:subject,summary:`Customer ${input.userId} · ${email}`,eventType:input.eventType}).catch(()=>({status:"FAILED" as const}));
+  }
 
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
   if (!resendApiKey) return { id, status: "QUEUED" as const };
@@ -2004,13 +2165,16 @@ export async function createFreshCustomerProfile(input: {
   email: string;
   source: "CUSTOMER" | "ADMIN";
   emailVerifiedAt?: string | null;
+  requestedAccountType?: "CHECKING" | "SAVINGS" | "INVESTMENT";
 }) {
   await initializeSimulationBank();
   const db = database();
   const email = input.email.trim().toLowerCase();
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
+  const requestedAccountType=input.requestedAccountType??"CHECKING";
   if (!firstName || !lastName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("CUSTOMER_DETAILS_INVALID");
+  if(!["CHECKING","SAVINGS","INVESTMENT"].includes(requestedAccountType))throw new Error("ACCOUNT_TYPE_INVALID");
   const existing = await db.prepare("SELECT user_id AS userId FROM sim_customer_directory WHERE email = ?")
     .bind(email).first<{ userId: string }>();
   if (existing) throw new Error("CUSTOMER_EMAIL_ALREADY_EXISTS");
@@ -2026,6 +2190,9 @@ export async function createFreshCustomerProfile(input: {
     db.prepare(`INSERT INTO sim_customer_profiles
       (user_id, profile_photo_data_url, updated_at) VALUES (?, NULL, ?)`)
       .bind(userId, now),
+    db.prepare(`INSERT INTO sim_customer_account_preferences
+      (user_id,requested_account_type,updated_at) VALUES (?,?,?)`)
+      .bind(userId,requestedAccountType,now),
     db.prepare(`INSERT INTO sim_customer_transfer_controls
       (user_id, external_mode, preferred_stop_code, updated_at)
       VALUES (?, 'STANDARD_APPROVAL', NULL, ?)`).bind(userId, now),
@@ -2043,6 +2210,7 @@ export async function createFreshCustomerProfile(input: {
     accountStatus: "IN_REVIEW" as const,
     emailVerifiedAt: input.emailVerifiedAt ?? null,
     createdSource: input.source,
+    requestedAccountType,
     createdAt: now,
     accountCount: 0,
     transactionCount: 0,
@@ -2059,9 +2227,10 @@ export async function decideSimulationCustomerKyc(command: {
   await initializeSimulationBank();
   const db = database();
   if (!command.reason.trim()) throw new Error("KYC_DECISION_REASON_REQUIRED");
-  const customer = await db.prepare(`SELECT user_id AS userId, first_name AS firstName,
-    last_name AS lastName, email FROM sim_customer_directory WHERE user_id = ?`)
-    .bind(command.userId).first<{ userId:string; firstName:string; lastName:string; email:string }>();
+  const customer = await db.prepare(`SELECT d.user_id AS userId,d.first_name AS firstName,
+    d.last_name AS lastName,d.email,COALESCE(p.requested_account_type,'CHECKING') AS requestedAccountType
+    FROM sim_customer_directory d LEFT JOIN sim_customer_account_preferences p ON p.user_id=d.user_id
+    WHERE d.user_id = ?`).bind(command.userId).first<{userId:string;firstName:string;lastName:string;email:string;requestedAccountType:"CHECKING"|"SAVINGS"|"INVESTMENT"}>();
   if (!customer) throw new Error("CUSTOMER_NOT_FOUND");
   const now = new Date().toISOString();
   if (command.decision === "REJECT") {
@@ -2102,8 +2271,8 @@ export async function decideSimulationCustomerKyc(command: {
   if (!existingAccount) {
     statements.push(db.prepare(`INSERT INTO sim_accounts
       (id, user_id, customer_name, type, account_number, balance_minor, updated_at)
-      VALUES (?, ?, ?, 'CHECKING', ?, 0, ?)`)
-      .bind(accountId, customer.userId, `${customer.firstName} ${customer.lastName}`, accountNumber, now));
+      VALUES (?, ?, ?, ?, ?, 0, ?)`)
+      .bind(accountId, customer.userId, `${customer.firstName} ${customer.lastName}`, customer.requestedAccountType, accountNumber, now));
   }
   if (!credential) {
     statements.push(db.prepare(`INSERT INTO sim_customer_credentials
@@ -2115,7 +2284,7 @@ export async function decideSimulationCustomerKyc(command: {
   await queueSimulationEmailAlert({
     userId: customer.userId, email: customer.email, eventType: "LOGIN",
     subject: "Your Northstar account is active",
-    body: "Your application was approved and your checking account is now active. Contact account services to establish your initial password.",
+    body: `Your application was approved and your ${customer.requestedAccountType.toLowerCase()} account is now active. Contact account services to establish your initial password.`,
   });
   return { userId: customer.userId, status: "ACTIVE" as const, accountCreated: !existingAccount, accountId };
 }
@@ -2541,6 +2710,7 @@ export async function requestSimulationVirtualCard(command:{
     (id,user_id,funding_account_id,display_name,monthly_limit_minor,status,requested_at)
     VALUES (?,?,?,?,?,'PENDING',?)`).bind(id,command.userId,command.fundingAccountId,
       command.displayName.trim(),command.monthlyLimitMinor,requestedAt)]);
+  await sendSimulationDiscordAdminAlert({title:"Virtual card approval requested",summary:`Customer ${command.userId} submitted a virtual card request.`,eventType:"CARD"}).catch(()=>({status:"FAILED" as const}));
   return {id,status:"PENDING" as const,requestedAt};
 }
 
