@@ -39,6 +39,9 @@ export async function POST(request: Request) {
         source: "CUSTOMER",
         emailVerifiedAt: verified.verifiedAt,
         requestedAccountType: String(verified.payload.accountType??"CHECKING") as "CHECKING"|"SAVINGS"|"INVESTMENT",
+        dateOfBirth: String(verified.payload.dateOfBirth??""),
+        phone: String(verified.payload.phone??""),
+        idType: String(verified.payload.idType??""),
       });
       const reference = `KYC-${new Date().toISOString().slice(2, 10).replaceAll("-", "")}-${profile.userId.slice(-6)}`;
       await queueSimulationEmailAlert({

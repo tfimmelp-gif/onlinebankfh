@@ -22,6 +22,17 @@ export type BankingCustomer = {
   emailVerifiedAt:string|null;
   createdSource:"CUSTOMER"|"ADMIN";
   requestedAccountType:"CHECKING"|"SAVINGS"|"INVESTMENT";
+  dateOfBirth:string|null;
+  phone:string|null;
+  idType:string|null;
+  idNumber:string|null;
+  addressLine1:string|null;
+  addressLine2:string|null;
+  city:string|null;
+  stateRegion:string|null;
+  postalCode:string|null;
+  countryCode:string|null;
+  occupation:string|null;
   createdAt:string;
 };
 
@@ -253,6 +264,7 @@ export function useBankingData(mode: "admin" | "customer" = "admin") {
       userId?: string;
       accountCreated?: boolean;
       passwordResetRequired?: boolean;
+      sessionsRevoked?:boolean;
     };
     if (!response.ok) throw new Error(result.error ?? "TRANSACTION_FAILED");
     await refresh();

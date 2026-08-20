@@ -215,14 +215,15 @@ function ProfileKycWorkspace() {
     <div className="two-column-workspace">
       <section className="section-card">
         <div className="section-title"><div><h2>Personal profile</h2><p>Keep your contact and residential information current.</p></div><span className="status-pill">Verified profile</span></div>
-        <form className="form-grid" onSubmit={(event)=>{event.preventDefault();setNotice({text:"Profile changes saved successfully."});}}>
-          <div className="form-row"><div className="field"><label>LEGAL FIRST NAME</label><input key={`first-${customer?.userId}`} defaultValue={customer?.firstName ?? ""}/></div><div className="field"><label>LEGAL LAST NAME</label><input key={`last-${customer?.userId}`} defaultValue={customer?.lastName ?? ""}/></div></div>
-          <div className="field"><label>EMAIL ADDRESS</label><input key={`email-${customer?.userId}`} type="email" defaultValue={customer?.email ?? ""}/></div>
-          <div className="form-row"><div className="field"><label>SSN / TAX ID</label><input defaultValue=""/></div><div className="field"><label>PHONE</label><input defaultValue=""/></div></div>
-          <div className="field"><label>RESIDENTIAL ADDRESS</label><input defaultValue=""/></div>
-          <div className="form-row"><div className="field"><label>CITY</label><input defaultValue=""/></div><div className="field"><label>STATE / ZIP</label><input defaultValue=""/></div></div>
-          <button className="inline-submit">Save profile</button>
-        </form>
+        <div className="form-grid customer-verified-profile">
+          <div className="form-row"><div className="field"><label>LEGAL FIRST NAME</label><input value={customer?.firstName??""} readOnly/></div><div className="field"><label>LEGAL LAST NAME</label><input value={customer?.lastName??""} readOnly/></div></div>
+          <div className="form-row"><div className="field"><label>EMAIL ADDRESS</label><input type="email" value={customer?.email??""} readOnly/></div><div className="field"><label>PHONE</label><input value={customer?.phone??"Not provided"} readOnly/></div></div>
+          <div className="form-row"><div className="field"><label>DATE OF BIRTH</label><input value={customer?.dateOfBirth??"Not provided"} readOnly/></div><div className="field"><label>OCCUPATION</label><input value={customer?.occupation??"Not provided"} readOnly/></div></div>
+          <div className="form-row"><div className="field"><label>IDENTIFICATION TYPE</label><input value={customer?.idType??"Not provided"} readOnly/></div><div className="field"><label>IDENTIFICATION NUMBER</label><input value={customer?.idNumber??"Not provided"} readOnly/></div></div>
+          <div className="field"><label>RESIDENTIAL ADDRESS</label><input value={[customer?.addressLine1,customer?.addressLine2].filter(Boolean).join(", ")||"Not provided"} readOnly/></div>
+          <div className="form-row"><div className="field"><label>CITY / REGION</label><input value={[customer?.city,customer?.stateRegion].filter(Boolean).join(", ")||"Not provided"} readOnly/></div><div className="field"><label>POSTAL / COUNTRY</label><input value={[customer?.postalCode,customer?.countryCode].filter(Boolean).join(" · ")||"Not provided"} readOnly/></div></div>
+          <div className="profile-change-guidance"><ShieldCheck size={16}/><span><b>Need to update verified information?</b> Contact support so account services can review and securely apply the change.</span><Link href="/app/support">Contact support</Link></div>
+        </div>
       </section>
       <aside className="section-card">
         <div className="section-title"><div><h2>KYC document upload</h2><p>Upload a JPG, PNG, or PDF for protected operations review.</p></div></div>

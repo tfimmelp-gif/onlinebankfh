@@ -614,3 +614,25 @@ test("container email delivery has resilient public DNS and actionable failures"
   assert.match(service, /causeCode/);
   assert.match(service, /failure_message = \?/);
 });
+
+test("admin customer management persistently edits personal information with an audit trail", async () => {
+  const migration = await readFile(new URL("../db/migrations/0017_customer_personal_information.sql", import.meta.url), "utf8");
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  const adminApi = await readFile(new URL("../app/admin/api/banking/route.ts", import.meta.url), "utf8");
+  const shell = await readFile(new URL("../components/PortalShell.tsx", import.meta.url), "utf8");
+  const customerWorkspace = await readFile(new URL("../components/CustomerWorkspaces.tsx", import.meta.url), "utf8");
+  assert.match(migration, /sim_customer_personal_information/);
+  assert.match(migration, /sim_customer_profile_changes/);
+  assert.match(migration, /before_state TEXT NOT NULL/);
+  assert.match(migration, /after_state TEXT NOT NULL/);
+  assert.match(service, /updateSimulationCustomerPersonalInformation/);
+  assert.match(service, /CUSTOMER_EMAIL_ALREADY_EXISTS/);
+  assert.match(service, /UPDATE sim_customer_login_sessions SET revoked_at/);
+  assert.match(service, /INSERT INTO sim_customer_profile_changes/);
+  assert.match(adminApi, /CUSTOMER_PROFILE_UPDATE/);
+  assert.match(shell, /REQUIRED CHANGE REASON/);
+  assert.match(shell, /IDENTIFICATION NUMBER/);
+  assert.match(shell, /Reset customer password/);
+  assert.match(customerWorkspace, /customer-verified-profile/);
+  assert.match(customerWorkspace, /Contact support/);
+});

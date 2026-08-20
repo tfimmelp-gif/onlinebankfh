@@ -17,6 +17,7 @@ import {
   saveSimulationDepositMethod,
   setSimulationTransferControl,
   updateSimulationCustomerAccountStatus,
+  updateSimulationCustomerPersonalInformation,
   decideSimulationVirtualCard,
   saveSimulationBrand,
   activateSimulationBrand,
@@ -94,6 +95,17 @@ export async function POST(request: Request) {
     firstName?: string;
     lastName?: string;
     email?: string;
+    dateOfBirth?:string;
+    phone?:string;
+    idType?:string;
+    idNumber?:string;
+    addressLine1?:string;
+    addressLine2?:string;
+    city?:string;
+    stateRegion?:string;
+    postalCode?:string;
+    countryCode?:string;
+    occupation?:string;
     accountStatus?: "ACTIVE" | "INACTIVE" | "IN_REVIEW";
     temporaryPassword?: string;
     kycDecision?: "APPROVE" | "REJECT";
@@ -125,6 +137,13 @@ export async function POST(request: Request) {
     if(body.action==="BRAND_ACTIVATE")return NextResponse.json(await activateSimulationBrand(body.brandId??"",actor));
     if(body.action==="FEE_RULE_SAVE")return NextResponse.json(await saveSimulationProcessingFeeRule({rail:body.rail??"ACH",percentageBps:Number(body.percentageBps??0),fixedMinor:Number(body.fixedMinor??0),minimumMinor:Number(body.minimumMinor??0),maximumMinor:body.maximumMinor===null?null:Number(body.maximumMinor??0),active:Number(body.active??1),updatedBy:actor}));
     if(body.action==="VIRTUAL_CARD_DECISION")return NextResponse.json(await decideSimulationVirtualCard({requestId:body.requestId??"",decision:body.cardDecision??"REJECT",reason:body.reason??"",decidedBy:actor}));
+    if(body.action==="CUSTOMER_PROFILE_UPDATE")return NextResponse.json(await updateSimulationCustomerPersonalInformation({
+      userId:body.userId??"",firstName:body.firstName??"",lastName:body.lastName??"",email:body.email??"",
+      dateOfBirth:body.dateOfBirth,phone:body.phone,idType:body.idType,idNumber:body.idNumber,
+      addressLine1:body.addressLine1,addressLine2:body.addressLine2,city:body.city,stateRegion:body.stateRegion,
+      postalCode:body.postalCode,countryCode:body.countryCode,occupation:body.occupation,
+      reason:body.reason??"",updatedBy:actor,
+    }));
     if (body.action === "CUSTOMER_STATUS_SET") {
       return NextResponse.json(await updateSimulationCustomerAccountStatus({
         userId:body.userId ?? "",

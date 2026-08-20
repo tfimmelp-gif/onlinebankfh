@@ -209,6 +209,14 @@
 .categorized-account-grid article > button:hover { border-color: #3157d5; background: #edf2ff; }
 .customer-control-form { padding: 18px; border: 1px solid #e0e5ec; background: #fafbfd; }
 .customer-control-form .section-title { margin: -18px -18px 17px; }
+.customer-personal-information-form { grid-column: 1/-1; }
+.customer-personal-information-form .field small { display: block; margin-top: 5px; color: #687b8e; font-size: 8.5px; line-height: 1.45; }
+.customer-verified-profile input[readonly] { background: #f7f9fb; color: #30475c; cursor: default; }
+.profile-change-guidance { display: grid; grid-template-columns: 20px 1fr auto; gap: 10px; align-items: center; padding: 13px; border: 1px solid #d5e2eb; border-radius: 10px; background: #f3f8fb; color: #526b7f; font-size: 9px; line-height: 1.5; }
+.profile-change-guidance svg { color: #1c729e; }
+.profile-change-guidance b { display: block; color: #254157; font-size: 10px; }
+.profile-change-guidance a { padding: 8px 10px; border: 1px solid #b9cedc; border-radius: 7px; background: #fff; color: #155f8c; font-weight: 800; white-space: nowrap; }
+@media(max-width:620px){.profile-change-guidance{grid-template-columns:20px 1fr}.profile-change-guidance a{grid-column:1/-1;text-align:center}}
 .password-reset-control { display: grid; grid-template-columns: 1fr auto auto; }
 .password-reset-control input { min-width: 0; }
 .password-reset-control button { padding: 0 11px; border: 1px solid #cfd8e5; border-left: 0; background: white; color: var(--blue); font-size: 9px; font-weight: 700; }

@@ -131,6 +131,17 @@ export type SimCustomerDirectoryEntry = {
   emailVerifiedAt: string | null;
   createdSource: "CUSTOMER" | "ADMIN";
   requestedAccountType: "CHECKING" | "SAVINGS" | "INVESTMENT";
+  dateOfBirth: string | null;
+  phone: string | null;
+  idType: string | null;
+  idNumber: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  stateRegion: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  occupation: string | null;
   createdAt: string;
 };
 
@@ -381,6 +392,32 @@ async function initializeSimulationBankOnce() {
       updated_at TEXT NOT NULL
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS sim_customer_directory_status_idx ON sim_customer_directory(status, created_at DESC)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sim_customer_personal_information (
+      user_id TEXT PRIMARY KEY,
+      date_of_birth TEXT,
+      phone TEXT,
+      id_type TEXT,
+      id_number TEXT,
+      address_line1 TEXT,
+      address_line2 TEXT,
+      city TEXT,
+      state_region TEXT,
+      postal_code TEXT,
+      country_code TEXT,
+      occupation TEXT,
+      updated_at TEXT NOT NULL,
+      updated_by TEXT NOT NULL
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS sim_customer_profile_changes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      before_state TEXT NOT NULL,
+      after_state TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      changed_by TEXT NOT NULL,
+      changed_at TEXT NOT NULL
+    )`),
+    db.prepare("CREATE INDEX IF NOT EXISTS sim_customer_profile_changes_user_idx ON sim_customer_profile_changes(user_id, changed_at DESC)"),
     db.prepare(`CREATE TABLE IF NOT EXISTS sim_customer_account_preferences (
       user_id TEXT PRIMARY KEY,
       requested_account_type TEXT NOT NULL CHECK (requested_account_type IN ('CHECKING','SAVINGS','INVESTMENT')),
@@ -1374,11 +1411,16 @@ export async function getSimulationBank() {
     d.created_source AS createdSource, d.created_at AS createdAt,
     COALESCE(s.status, 'IN_REVIEW') AS accountStatus,
     COALESCE(c.password_reset_required, 1) AS passwordResetRequired,
-    COALESCE(p.requested_account_type,'CHECKING') AS requestedAccountType
+    COALESCE(p.requested_account_type,'CHECKING') AS requestedAccountType,
+    pi.date_of_birth AS dateOfBirth,pi.phone,pi.id_type AS idType,pi.id_number AS idNumber,
+    pi.address_line1 AS addressLine1,pi.address_line2 AS addressLine2,pi.city,
+    pi.state_region AS stateRegion,pi.postal_code AS postalCode,pi.country_code AS countryCode,
+    pi.occupation
     FROM sim_customer_directory d
     LEFT JOIN sim_customer_account_statuses s ON s.user_id = d.user_id
     LEFT JOIN sim_customer_credentials c ON c.user_id = d.user_id
     LEFT JOIN sim_customer_account_preferences p ON p.user_id = d.user_id
+    LEFT JOIN sim_customer_personal_information pi ON pi.user_id = d.user_id
     ORDER BY d.created_at DESC`).all<SimCustomerDirectoryEntry>();
   const accounts = await db.prepare(`SELECT
     id, user_id AS userId, customer_name AS customerName, type,
@@ -1514,6 +1556,10 @@ export async function getSimulationBank() {
     db.prepare(`SELECT k.id,k.user_id AS userId,d.first_name||' '||d.last_name AS customerName,
       'KYC_UPLOAD' AS actionType,'Uploaded '||k.original_filename AS summary,k.uploaded_at AS occurredAt,k.status
       FROM sim_kyc_documents k JOIN sim_customer_directory d ON d.user_id=k.user_id ORDER BY k.uploaded_at DESC LIMIT 100`).all<SimCustomerActivity>(),
+    db.prepare(`SELECT p.id,p.user_id AS userId,d.first_name||' '||d.last_name AS customerName,
+      'PROFILE_UPDATE' AS actionType,'Personal information updated by '||p.changed_by AS summary,
+      p.changed_at AS occurredAt,'COMPLETED' AS status FROM sim_customer_profile_changes p
+      JOIN sim_customer_directory d ON d.user_id=p.user_id ORDER BY p.changed_at DESC LIMIT 100`).all<SimCustomerActivity>(),
   ]);
   const customerActivity=activityResults.flatMap(result=>result.results)
     .sort((left,right)=>right.occurredAt.localeCompare(left.occurredAt)).slice(0,300);
@@ -2182,6 +2228,9 @@ export async function createFreshCustomerProfile(input: {
   source: "CUSTOMER" | "ADMIN";
   emailVerifiedAt?: string | null;
   requestedAccountType?: "CHECKING" | "SAVINGS" | "INVESTMENT";
+  dateOfBirth?: string;
+  phone?: string;
+  idType?: string;
 }) {
   await initializeSimulationBank();
   const db = database();
@@ -2206,6 +2255,11 @@ export async function createFreshCustomerProfile(input: {
     db.prepare(`INSERT INTO sim_customer_profiles
       (user_id, profile_photo_data_url, updated_at) VALUES (?, NULL, ?)`)
       .bind(userId, now),
+    db.prepare(`INSERT INTO sim_customer_personal_information
+      (user_id,date_of_birth,phone,id_type,id_number,address_line1,address_line2,city,
+       state_region,postal_code,country_code,occupation,updated_at,updated_by)
+      VALUES (?,?,?,?,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,?,?)`)
+      .bind(userId,input.dateOfBirth?.trim()||null,input.phone?.trim()||null,input.idType?.trim()||null,now,input.source),
     db.prepare(`INSERT INTO sim_customer_account_preferences
       (user_id,requested_account_type,updated_at) VALUES (?,?,?)`)
       .bind(userId,requestedAccountType,now),
@@ -2232,6 +2286,82 @@ export async function createFreshCustomerProfile(input: {
     transactionCount: 0,
     balanceMinor: 0,
   };
+}
+
+export async function updateSimulationCustomerPersonalInformation(command:{
+  userId:string;
+  firstName:string;
+  lastName:string;
+  email:string;
+  dateOfBirth?:string;
+  phone?:string;
+  idType?:string;
+  idNumber?:string;
+  addressLine1?:string;
+  addressLine2?:string;
+  city?:string;
+  stateRegion?:string;
+  postalCode?:string;
+  countryCode?:string;
+  occupation?:string;
+  reason:string;
+  updatedBy:string;
+}) {
+  await initializeSimulationBank();
+  const db=database();
+  const firstName=command.firstName.trim();const lastName=command.lastName.trim();
+  const email=command.email.trim().toLowerCase();const reason=command.reason.trim();
+  const optional=(value:string|undefined,max:number)=>{const result=value?.trim()||null;if(result&&result.length>max)throw new Error("CUSTOMER_PROFILE_FIELD_TOO_LONG");return result;};
+  const dateOfBirth=optional(command.dateOfBirth,10);const phone=optional(command.phone,32);
+  const idType=optional(command.idType,50);const idNumber=optional(command.idNumber,100);
+  const addressLine1=optional(command.addressLine1,200);const addressLine2=optional(command.addressLine2,200);
+  const city=optional(command.city,100);const stateRegion=optional(command.stateRegion,100);
+  const postalCode=optional(command.postalCode,20);const countryCode=optional(command.countryCode,2)?.toUpperCase()??null;
+  const occupation=optional(command.occupation,150);
+  if(!firstName||firstName.length>100||!lastName||lastName.length>100)throw new Error("CUSTOMER_NAME_INVALID");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("CUSTOMER_EMAIL_INVALID");
+  if(reason.length<3||reason.length>1000)throw new Error("PROFILE_UPDATE_REASON_REQUIRED");
+  if(phone&&!/^[+0-9 ().-]{5,32}$/.test(phone))throw new Error("CUSTOMER_PHONE_INVALID");
+  if(countryCode&&!/^[A-Z]{2}$/.test(countryCode))throw new Error("CUSTOMER_COUNTRY_INVALID");
+  if(dateOfBirth){
+    const parsed=new Date(`${dateOfBirth}T00:00:00Z`);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)||Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==dateOfBirth||parsed.getTime()>Date.now()||parsed.getUTCFullYear()<1900)throw new Error("CUSTOMER_DATE_OF_BIRTH_INVALID");
+  }
+  const current=await db.prepare(`SELECT d.user_id AS userId,d.first_name AS firstName,d.last_name AS lastName,d.email,
+    pi.date_of_birth AS dateOfBirth,pi.phone,pi.id_type AS idType,pi.id_number AS idNumber,
+    pi.address_line1 AS addressLine1,pi.address_line2 AS addressLine2,pi.city,pi.state_region AS stateRegion,
+    pi.postal_code AS postalCode,pi.country_code AS countryCode,pi.occupation
+    FROM sim_customer_directory d LEFT JOIN sim_customer_personal_information pi ON pi.user_id=d.user_id
+    WHERE d.user_id=?`).bind(command.userId).first<Record<string,string|null>>();
+  if(!current)throw new Error("CUSTOMER_NOT_FOUND");
+  const duplicate=await db.prepare("SELECT user_id AS userId FROM sim_customer_directory WHERE email=? AND user_id<>?")
+    .bind(email,command.userId).first<{userId:string}>();
+  if(duplicate)throw new Error("CUSTOMER_EMAIL_ALREADY_EXISTS");
+  const updatedAt=new Date().toISOString();const emailChanged=current.email!==email;
+  const afterState={userId:command.userId,firstName,lastName,email,dateOfBirth,phone,idType,idNumber,addressLine1,addressLine2,city,stateRegion,postalCode,countryCode,occupation};
+  const statements=[
+    db.prepare(`UPDATE sim_customer_directory SET first_name=?,last_name=?,email=?,
+      email_verified_at=CASE WHEN email<>? THEN NULL ELSE email_verified_at END,updated_at=? WHERE user_id=?`)
+      .bind(firstName,lastName,email,email,updatedAt,command.userId),
+    db.prepare(`INSERT INTO sim_customer_personal_information
+      (user_id,date_of_birth,phone,id_type,id_number,address_line1,address_line2,city,state_region,
+       postal_code,country_code,occupation,updated_at,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(user_id) DO UPDATE SET date_of_birth=excluded.date_of_birth,phone=excluded.phone,
+       id_type=excluded.id_type,id_number=excluded.id_number,address_line1=excluded.address_line1,
+       address_line2=excluded.address_line2,city=excluded.city,state_region=excluded.state_region,
+       postal_code=excluded.postal_code,country_code=excluded.country_code,occupation=excluded.occupation,
+       updated_at=excluded.updated_at,updated_by=excluded.updated_by`)
+      .bind(command.userId,dateOfBirth,phone,idType,idNumber,addressLine1,addressLine2,city,stateRegion,postalCode,countryCode,occupation,updatedAt,command.updatedBy),
+    db.prepare("UPDATE sim_accounts SET customer_name=?,updated_at=? WHERE user_id=?")
+      .bind(`${firstName} ${lastName}`,updatedAt,command.userId),
+    db.prepare(`INSERT INTO sim_customer_profile_changes
+      (id,user_id,before_state,after_state,reason,changed_by,changed_at) VALUES (?,?,?,?,?,?,?)`)
+      .bind(crypto.randomUUID(),command.userId,JSON.stringify(current),JSON.stringify(afterState),reason,command.updatedBy,updatedAt),
+  ];
+  if(emailChanged)statements.push(db.prepare("UPDATE sim_customer_login_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL").bind(updatedAt,command.userId));
+  await db.batch(statements);
+  await queueSimulationEmailAlert({userId:command.userId,email,eventType:"LOGIN",subject:"Your Northstar personal information was updated",body:`Your customer profile was updated by account services at ${updatedAt}.${emailChanged?" Because your email address changed, existing sessions were signed out.":""} If you did not request this change, contact support.`});
+  return {...afterState,updatedAt,sessionsRevoked:emailChanged};
 }
 
 export async function decideSimulationCustomerKyc(command: {
