@@ -632,7 +632,9 @@ test("admin customer management persistently edits personal information with an 
   assert.match(service, /Customer profile update alert could not be queued/);
   assert.match(adminApi, /CUSTOMER_PROFILE_UPDATE/);
   assert.match(shell, /REQUIRED CHANGE REASON/);
-  assert.match(shell, /profileForm\.reason\.trim\(\)\.length<3/);
+  assert.match(shell, /noValidate/);
+  assert.match(shell, /profile-save-error/);
+  assert.match(shell, /setProfileError/);
   assert.match(shell, /Saving…/);
   assert.match(shell, /IDENTIFICATION NUMBER/);
   assert.match(shell, /Reset customer password/);
