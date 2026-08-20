@@ -629,8 +629,11 @@ test("admin customer management persistently edits personal information with an 
   assert.match(service, /CUSTOMER_EMAIL_ALREADY_EXISTS/);
   assert.match(service, /UPDATE sim_customer_login_sessions SET revoked_at/);
   assert.match(service, /INSERT INTO sim_customer_profile_changes/);
+  assert.match(service, /Customer profile update alert could not be queued/);
   assert.match(adminApi, /CUSTOMER_PROFILE_UPDATE/);
   assert.match(shell, /REQUIRED CHANGE REASON/);
+  assert.match(shell, /profileForm\.reason\.trim\(\)\.length<3/);
+  assert.match(shell, /Saving…/);
   assert.match(shell, /IDENTIFICATION NUMBER/);
   assert.match(shell, /Reset customer password/);
   assert.match(customerWorkspace, /customer-verified-profile/);

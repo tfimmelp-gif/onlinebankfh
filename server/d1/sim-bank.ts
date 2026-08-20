@@ -2360,7 +2360,8 @@ export async function updateSimulationCustomerPersonalInformation(command:{
   ];
   if(emailChanged)statements.push(db.prepare("UPDATE sim_customer_login_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL").bind(updatedAt,command.userId));
   await db.batch(statements);
-  await queueSimulationEmailAlert({userId:command.userId,email,eventType:"LOGIN",subject:"Your Northstar personal information was updated",body:`Your customer profile was updated by account services at ${updatedAt}.${emailChanged?" Because your email address changed, existing sessions were signed out.":""} If you did not request this change, contact support.`});
+  await queueSimulationEmailAlert({userId:command.userId,email,eventType:"LOGIN",subject:"Your Northstar personal information was updated",body:`Your customer profile was updated by account services at ${updatedAt}.${emailChanged?" Because your email address changed, existing sessions were signed out.":""} If you did not request this change, contact support.`})
+    .catch((alertError)=>console.error("Customer profile update alert could not be queued",alertError));
   return {...afterState,updatedAt,sessionsRevoked:emailChanged};
 }
 
