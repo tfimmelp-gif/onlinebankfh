@@ -1908,7 +1908,11 @@ export async function queueSimulationEmailAlert(input: {
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    let response:Response|null=null;
+    let deliveryError:unknown;
+    for(let attempt=0;attempt<3;attempt+=1){
+      try {
+        response=await fetch("https://api.resend.com/emails", {
       method: "POST",
       signal: AbortSignal.timeout(10_000),
       headers: {
@@ -1928,7 +1932,14 @@ export async function queueSimulationEmailAlert(input: {
           : {}),
         tags: [{ name: "event_type", value: input.eventType.toLowerCase() }],
       }),
-    });
+        });
+        break;
+      } catch(error) {
+        deliveryError=error;
+        if(attempt<2)await new Promise((resolve)=>setTimeout(resolve,250*(attempt+1)));
+      }
+    }
+    if(!response)throw deliveryError;
     const result = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
     if (!response.ok) throw new Error(`RESEND_${response.status}_${result.name ?? result.message ?? "DELIVERY_FAILED"}`);
     if (!result.id) throw new Error("RESEND_RESPONSE_ID_MISSING");
@@ -1940,10 +1951,15 @@ export async function queueSimulationEmailAlert(input: {
     ]);
     return { id, status: "SENT" as const };
   } catch (error) {
+    const cause=error instanceof Error?error.cause:undefined;
+    const causeCode=typeof cause==="object"&&cause!==null&&"code" in cause?String(cause.code):"";
+    const causeMessage=cause instanceof Error?cause.message:"";
+    const failure=[error instanceof Error?error.message:"EMAIL_DELIVERY_FAILED",causeCode,causeMessage]
+      .filter(Boolean).join(" · ").slice(0,500);
     await db.batch([
       db.prepare(`UPDATE sim_email_alerts SET status = 'FAILED',
         failure_message = ? WHERE id = ?`)
-        .bind(error instanceof Error ? error.message : "EMAIL_DELIVERY_FAILED", id),
+        .bind(failure, id),
     ]);
     return { id, status: "FAILED" as const };
   }

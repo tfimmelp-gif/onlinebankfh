@@ -375,7 +375,7 @@ export default function HomePage() {
           <div><b>{t("Get started")}</b><Link href="/open-account">{t("Open an account")}</Link><Link href="/login">{t("Customer sign in")}</Link></div>
         </div>
         <div className="bank-footer-legal">
-          <p>{t("Privacy")} · {t("Security")} · {t("Accessibility")}</p>
+          <p>{t("Privacy")} · {t("Security")} · {t("Accessibility")} · <Link href="/simulation-disclosure">{t("Compliance disclosure")}</Link></p>
           <span>© {new Date().getFullYear()} {brand?.bankName??"Online Banking"}. All rights reserved.</span>
         </div>
       </footer>

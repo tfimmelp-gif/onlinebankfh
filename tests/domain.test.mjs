@@ -604,3 +604,13 @@ test("administrator credentials and Discord alerts are persistent and protected"
   assert.match(shell, /Discord operations alerts/);
   assert.match(shell, /CURRENT PASSWORD/);
 });
+
+test("container email delivery has resilient public DNS and actionable failures", async () => {
+  const compose = await readFile(new URL("../compose.yaml", import.meta.url), "utf8");
+  const service = await readFile(new URL("../server/d1/sim-bank.ts", import.meta.url), "utf8");
+  assert.match(compose, /dns:\s*\n\s*- 1\.1\.1\.1\s*\n\s*- 8\.8\.8\.8/i);
+  assert.match(compose, /frontend:\s*\n\s*gw_priority:\s*1/i);
+  assert.match(service, /for\(let attempt=0;attempt<3;attempt\+=1\)/);
+  assert.match(service, /causeCode/);
+  assert.match(service, /failure_message = \?/);
+});
